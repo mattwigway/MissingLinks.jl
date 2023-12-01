@@ -1,0 +1,35 @@
+---
+title: Build graph
+author: Matt Bhagat-Conway
+---
+
+```{julia}
+using GeoDataFrames, DataFrames, MissingLinks
+import TOML
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+DATA_PATH = CONFIG["data_path"]
+```
+
+## Read data
+
+We currently have three data files we're working with: sidewalks, shared-use paths, and crosswalks.
+
+```{julia}
+sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_sidewalks.gpkg"))
+paths = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_shared_use_paths.gpkg"))
+crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_crosswalks.shp"))
+```
+
+The sidewalks layer has some curves, convert them to linestring
+
+```{julia}
+sidewalks.geom = ArchGDAL.lineargeom.(sidewalks.geom)
+```
+
+## Build network
+
+This builds a MetaGraphsNext network from the dataset.
+
+```{julia}
+G = graph_from_gdal(sidewalks, paths, crosswalks)
+```
