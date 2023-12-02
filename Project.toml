@@ -15,6 +15,8 @@ LibSpatialIndex = "f19c2e90-9d16-5f2d-a2a7-af3fb29e4907"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
+Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
+ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
 julia = "1.9"

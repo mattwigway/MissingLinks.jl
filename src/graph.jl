@@ -41,8 +41,23 @@ function find_or_create_vertex!(G, end_node_idx, location, tolerance)
             # if the end ones are found first, the middle one will have multiple candidates
             @warn "At location $location, found $(length(candidates)) candidate nodes within tolerance $tolerance:" candidates
         end
+
+        # TODO could use label_for here
         return VertexID(first(existing))
     end
+end
+
+"Create a new graph with appropriately set types"
+function new_graph()
+    MetaGraph(
+        Graph(), # for walking - undirected
+        label_type=VertexID,
+        vertex_data_type=NTuple{2, Float64},
+        edge_data_type=EdgeData,
+        graph_data=nothing,
+        weight_function=ed -> ed.length_m,
+        default_weight=Inf64
+    )
 end
 
 
@@ -50,13 +65,7 @@ end
 This builds a graph from one or more GeoDataFrame layers.
 """
 function graph_from_gdal(layers...; tolerance=1e-6)
-    G = MetaGraph(
-        Graph(), # for walking - undirected
-        label_type=VertexID,
-        vertex_data_type=NTuple{2, Float64},
-        edge_data_type=EdgeData,
-        graph_data=nothing
-    )
+    G = new_graph()
 
     # pass 1: index all end nodes (connections), and add vertices to graph
     end_node_idx = RTree(2)
@@ -155,4 +164,39 @@ function graph_to_graphml(out, G; pretty=false)
     else
         write(out, doc)
     end
+end
+
+"""
+Data cleaning: remove islands that are smaller than a certain size
+"""
+function remove_tiny_islands(G, min_vertices_to_retain)
+    components = if is_directed(G)
+        strongly_connected_components(G)
+    else
+        connected_components(G)
+    end
+
+    component_sizes = length.(components)
+    @info "Removing $(sum(component_sizes .< min_vertices_to_retain)) components (out of $(length(components)) total) with $(min_vertices_to_retain - 1) or fewer vertices. " *
+        "($(sum(component_sizes[component_sizes .< min_vertices_to_retain])) / $(nv(G)) vertices)"
+
+    # Workaround for https://github.com/JuliaGraphs/MetaGraphsNext.jl/issues/74: create
+    # a new graph retaining only what we want
+    vertices_to_keep = Set(label_for.(Ref(G), Iterators.flatten(components[component_sizes .≥ min_vertices_to_retain])))
+
+    G2 = new_graph()
+
+    for v in labels(G)
+        if v ∈ vertices_to_keep
+            G2[v] = G[v]
+        end
+    end
+
+    for (v1, v2) in edge_labels(G)
+        if v1 ∈ vertices_to_keep && v2 ∈ vertices_to_keep
+            G2[v1, v2] = G[v1, v2]
+        end
+    end
+
+    return G2
 end

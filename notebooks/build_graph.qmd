@@ -4,7 +4,7 @@ author: Matt Bhagat-Conway
 ---
 
 ```{julia}
-using GeoDataFrames, DataFrames, MissingLinks
+using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext
 import TOML
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
@@ -24,6 +24,7 @@ The sidewalks layer has some curves, convert them to linestring
 
 ```{julia}
 sidewalks.geom = ArchGDAL.lineargeom.(sidewalks.geom)
+rename!(crosswalks, :geometry => :geom)
 ```
 
 ## Build network
@@ -32,4 +33,52 @@ This builds a MetaGraphsNext network from the dataset.
 
 ```{julia}
 G = graph_from_gdal(sidewalks, paths, crosswalks)
+```
+
+## Temporarily use a different network
+
+Until we have time to fix the connectivity issues in that one.
+
+```{julia}
+osm = GeoDataFrames.read(joinpath(DATA_PATH, "OpenStreetMap", "meck_county_network_projected.gpkg"))
+```
+
+```{julia}
+G = graph_from_gdal(osm)
+```
+
+```{julia}
+G = remove_tiny_islands(G, 10)
+```
+
+```{julia}
+MissingLinks.graph_to_graphml("graph.graphml", G, pretty=true)
+```
+
+```{julia}
+matrix = Mmap.mmap(open("distances.bin", "w+"), Matrix{UInt16}, (nv(G), nv(G)); grow=true)
+fill!(matrix, zero(UInt16))
+```
+
+Do the routing
+
+```{julia}
+@time MissingLinks.fill_matrix!(G, matrix)
+```
+
+Find candidate missing links (places where network distance >> geographic distance)
+
+```{julia}
+@time all_candidate_links = identify_potential_missing_links(G, matrix, 100, 1000)
+```
+
+Deduplicate similar links (~5min)
+
+```{julia}
+@time candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
+```
+
+```{julia}
+links_gis = links_to_gdf(G, candidate_links)
+GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
 ```
