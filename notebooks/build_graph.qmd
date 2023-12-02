@@ -78,6 +78,13 @@ Deduplicate similar links (~5min)
 @time candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
 ```
 
+Score the links
+
+```{julia}
+w = ones(nv(G))
+scores = compute_link_scores(x -> x < 1609 * 2, candidate_links, matrix, w, w, 1609 * 2)
+```
+
 ```{julia}
 links_gis = links_to_gdf(G, candidate_links)
 GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
