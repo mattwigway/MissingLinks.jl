@@ -200,3 +200,14 @@ function remove_tiny_islands(G, min_vertices_to_retain)
 
     return G2
 end
+
+function index_graph_edges(G)
+    edgeidx = RTree(2)
+    edges = Vector{NTuple{2, VertexID}}()
+    for (v1, v2) in edge_labels(G)
+        env = ArchGDAL.envelope(G[v1, v2].geom)
+        push!(edges, (v1, v2))
+        insert!(edgeidx, length(edges), [env.MinX, env.MinY], [env.MaxX, env.MaxY])
+    end
+    return (edgeidx, edges)
+end

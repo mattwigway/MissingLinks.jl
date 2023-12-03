@@ -4,8 +4,9 @@ author: Matt Bhagat-Conway
 ---
 
 ```{julia}
-using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext
+using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext, CSV
 import TOML
+import GeoFormatTypes as GFT
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
 ```
@@ -82,10 +83,55 @@ Score the links
 
 ```{julia}
 w = ones(nv(G))
-scores = compute_link_scores(x -> x < 1609 * 2, candidate_links, matrix, w, w, 1609 * 2)
+scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, w, w, 1609 * 2)
 ```
 
 ```{julia}
-links_gis = links_to_gdf(G, candidate_links)
+links_gis = links_to_gdf(G, candidate_links, scores)
 GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
+```
+
+## Create origin and destination weights
+
+```{julia}
+parcels = GeoDataFrames.read(joinpath(DATA_PATH, "parcels", "Parcel_LandUse.shp"));
+# reproject state plane feet to meters
+parcels.geometry = reproject(parcels.geometry, GFT.EPSG(2264), GFT.EPSG(32119));
+```
+
+```{julia}
+# write out the land use codes to a file
+df = DataFrame("land_use" => unique(parcels.txt_Land_1))
+df.origins_per_parcel .= missing
+df.origins_per_acre .= missing
+df.destinations_per_parcel .= missing
+df.destinations_per_acre .= missing
+CSV.write(joinpath(DATA_PATH, "parcels", "land_use_weights_template.csv"), df)
+```
+
+```{julia}
+land_use_codes = CSV.read(joinpath(DATA_PATH, "parcels", "land_use_weights.csv"), DataFrame)
+parcels = parcels[.!ismissing.(parcels.txt_Land_1), :]
+land_use_codes = land_use_codes[.!ismissing.(land_use_codes.land_use), :]
+leftjoin!(parcels, land_use_codes, on=:txt_Land_1=>:land_use)
+```
+
+```{julia}
+parcels.origin_weight = coalesce.(
+    passmissing(convert).(Float64, parcels.origins_per_parcel),
+    parcels.origins_per_acre .* parcels.Acres,
+    0.0
+)
+```
+
+```{julia}
+parcels.destination_weight = coalesce.(
+    passmissing(convert).(Float64, parcels.destinations_per_parcel),
+    parcels.destinations_per_acre .* parcels.Acres,
+    0.0
+)
+```
+
+```{julia}
+weights = create_graph_weights(G, parcels)
 ```

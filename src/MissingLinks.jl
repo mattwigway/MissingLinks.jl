@@ -13,8 +13,9 @@ include("graph.jl")
 include("node_to_node.jl")
 include("identify_missing_links.jl")
 include("score.jl")
+include("weight_nodes.jl")
 
 export graph_from_gdal, identify_potential_missing_links, links_to_gdf, remove_tiny_islands, deduplicate_links,
-    score_links
+    score_links, create_graph_weights
 
 end
