@@ -4,7 +4,8 @@ author: Matt Bhagat-Conway
 ---
 
 ```{julia}
-using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext, CSV
+using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext, CSV,
+    Plots
 import TOML
 import GeoFormatTypes as GFT
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
@@ -79,18 +80,6 @@ Deduplicate similar links (~5min)
 @time candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
 ```
 
-Score the links
-
-```{julia}
-w = ones(nv(G))
-scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, w, w, 1609 * 2)
-```
-
-```{julia}
-links_gis = links_to_gdf(G, candidate_links, scores)
-GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
-```
-
 ## Create origin and destination weights
 
 ```{julia}
@@ -133,5 +122,18 @@ parcels.destination_weight = coalesce.(
 ```
 
 ```{julia}
-weights = create_graph_weights(G, parcels)
+weights = create_graph_weights(G, parcels, [:origin_weight, :destination_weight], 20)
 ```
+
+## Score the links
+
+```{julia}
+scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, weights[:, 1], weights[:, 2], 1609 * 2)
+```
+
+```{julia}
+links_gis = links_to_gdf(G, candidate_links, scores)
+GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
+```
+
+## Figures for the paper
