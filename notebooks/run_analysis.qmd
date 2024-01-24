@@ -17,16 +17,35 @@ DATA_PATH = CONFIG["data_path"]
 We currently have three data files we're working with: sidewalks, shared-use paths, and crosswalks.
 
 ```{julia}
-sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_sidewalks.gpkg"))
-paths = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_shared_use_paths.gpkg"))
-crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "charlotte_crosswalks.shp"))
+# TODO clean up these paths
+sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_sidewalks.gpkg"))
+paths = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_shared_use_paths.gpkg"))
+crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "charlotte_crosswalks.shp"))
+rename!(crosswalks, :geometry=>:geom)
 ```
 
 The sidewalks layer has some curves, convert them to linestring
 
 ```{julia}
 sidewalks.geom = ArchGDAL.lineargeom.(sidewalks.geom)
-rename!(crosswalks, :geometry => :geom)
+```
+
+## Crop to the priority area
+
+```{julia}
+priority_area = GeoDataFrames.read(joinpath(DATA_PATH, "data", "priority_area.gpkg"))
+priority_area.geom = reproject(priority_area.geom, GFT.EPSG(4269), GFT.EPSG(CONFIG["coord_system"]), order=:trad)
+prepared_area = ArchGDAL.preparegeom.(priority_area.geom)
+
+filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), sidewalks)
+filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), crosswalks)
+filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), paths);
+```
+
+## Convert to noded
+
+```{julia}
+noded = semi_to_fully_noded(sidewalks, crosswalks, paths; snap_tolerance=3, split_tolerance=0.5)
 ```
 
 ## Build network
@@ -34,7 +53,7 @@ rename!(crosswalks, :geometry => :geom)
 This builds a MetaGraphsNext network from the dataset.
 
 ```{julia}
-G = graph_from_gdal(sidewalks, paths, crosswalks)
+G = graph_from_gdal(noded, tolerance=3.5)
 ```
 
 ## Temporarily use a different network
@@ -42,11 +61,11 @@ G = graph_from_gdal(sidewalks, paths, crosswalks)
 Until we have time to fix the connectivity issues in that one.
 
 ```{julia}
-osm = GeoDataFrames.read(joinpath(DATA_PATH, "OpenStreetMap", "meck_county_network_projected.gpkg"))
+#osm = GeoDataFrames.read(joinpath(DATA_PATH, "OpenStreetMap", "meck_county_network_projected.gpkg"))
 ```
 
 ```{julia}
-G = graph_from_gdal(osm)
+#G = graph_from_gdal(osm)
 ```
 
 ```{julia}
@@ -59,7 +78,7 @@ MissingLinks.graph_to_graphml("graph.graphml", G, pretty=true)
 
 ```{julia}
 matrix = Mmap.mmap(open("distances.bin", "w+"), Matrix{UInt16}, (nv(G), nv(G)); grow=true)
-fill!(matrix, zero(UInt16))
+fill!(matrix, zero(UInt16));
 ```
 
 Do the routing
@@ -83,7 +102,7 @@ Deduplicate similar links (~5min)
 ## Create origin and destination weights
 
 ```{julia}
-parcels = GeoDataFrames.read(joinpath(DATA_PATH, "parcels", "Parcel_LandUse.shp"));
+parcels = GeoDataFrames.read(joinpath(DATA_PATH, "data", "parcels", "Parcel_LandUse.shp"));
 # reproject state plane feet to meters
 parcels.geometry = reproject(parcels.geometry, GFT.EPSG(2264), GFT.EPSG(32119));
 ```
@@ -95,11 +114,11 @@ df.origins_per_parcel .= missing
 df.origins_per_acre .= missing
 df.destinations_per_parcel .= missing
 df.destinations_per_acre .= missing
-CSV.write(joinpath(DATA_PATH, "parcels", "land_use_weights_template.csv"), df)
+CSV.write(joinpath(DATA_PATH, "data", "parcels", "land_use_weights_template.csv"), df)
 ```
 
 ```{julia}
-land_use_codes = CSV.read(joinpath(DATA_PATH, "parcels", "land_use_weights.csv"), DataFrame)
+land_use_codes = CSV.read(joinpath(DATA_PATH, "data", "parcels", "land_use_weights.csv"), DataFrame)
 parcels = parcels[.!ismissing.(parcels.txt_Land_1), :]
 land_use_codes = land_use_codes[.!ismissing.(land_use_codes.land_use), :]
 leftjoin!(parcels, land_use_codes, on=:txt_Land_1=>:land_use)
@@ -133,7 +152,7 @@ scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, weights[:, 1], 
 
 ```{julia}
 links_gis = links_to_gdf(G, candidate_links, scores)
-GeoDataFrames.write(joinpath(DATA_PATH, "OpenStreetMap", "candidate_missing_links.gpkg"), links_gis)
+GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis)
 ```
 
 ## Figures for the paper
