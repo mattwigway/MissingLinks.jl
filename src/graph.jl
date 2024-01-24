@@ -39,7 +39,7 @@ function find_or_create_vertex!(G, end_node_idx, location, tolerance)
         if length(existing) > 1
             # This could happen e.g. if there are three nearby nodes each tolerance units apart, in a line
             # if the end ones are found first, the middle one will have multiple candidates
-            @warn "At location $location, found $(length(candidates)) candidate nodes within tolerance $tolerance:" candidates
+            @warn "At location $location, found $(length(existing)) candidate nodes within tolerance $tolerance:" map(x -> G[VertexID(x)], existing)
         end
 
         # TODO could use label_for here
