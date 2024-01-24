@@ -20,6 +20,9 @@ struct VertexID
     id::Int64
 end
 
+Base.isless(a::VertexID, b::VertexID) = a.id < b.id
+Base.isequal(a::VertexID, b::VertexID) = a.id == b.id
+
 function find_or_create_vertex!(G, end_node_idx, location, tolerance)
     loc = collect(location) # tuple to vector
     existing = filter(intersects(end_node_idx, loc .- tolerance, loc .+ tolerance)) do candidate
