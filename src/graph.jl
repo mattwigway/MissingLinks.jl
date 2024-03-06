@@ -1,5 +1,9 @@
 EdgeData = @NamedTuple{length_m::Float64, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
+# if the geographic distance from two nodes is less than the tolerance, we connect them
+# if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance
+const NODE_CONNECT_FACTOR = 2
+
 "Run the provided function on each constituent geometry of a multigeometry"
 function for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString})
     for i in 1:ArchGDAL.ngeom(g)
@@ -25,11 +29,13 @@ Base.isequal(a::VertexID, b::VertexID) = a.id == b.id
 
 function find_or_create_vertex!(G, end_node_idx, location, tolerance)
     loc = collect(location) # tuple to vector
-    existing = filter(intersects(end_node_idx, loc .- tolerance, loc .+ tolerance)) do candidate
+    existing = filter(map(x -> label_for(G, x), intersects(end_node_idx, loc .- tolerance, loc .+ tolerance))) do candidate
         # is it closer than the tolerance (l2-norm is euclidean distance)
-        candidate_loc = G[VertexID(candidate)]
+        candidate_loc = G[candidate]
         norm2(loc .- candidate_loc) ≤ tolerance
     end
+
+    sort!(existing, by=candidate -> norm2(loc .- G[candidate]), order=Base.Order.ReverseOrdering())
 
     if isempty(existing)
         # create a new vertex and add it to the index
@@ -41,22 +47,25 @@ function find_or_create_vertex!(G, end_node_idx, location, tolerance)
     else
         if length(existing) > 1
             # This could happen e.g. if there are three nearby nodes each tolerance units apart, in a line
-            # if the end ones are found first, the middle one will have multiple candidates. This doesn't happen that often,
-            # so we just do not snap.
-            @warn "At location $location, found $(length(existing)) candidate nodes within tolerance $tolerance; connecting them before choosing one" map(x -> G[VertexID(x)], existing)
-            for (fr, to) in zip(existing[begin:end-1], existing[begin+1:end])
-                if !has_edge(G, code_for(G, VertexID(fr)), code_for(G, VertexID(to)))
-                    frloc = G[VertexID(fr)]
-                    toloc = G[VertexID(to)]
-                    G[VertexID(fr), VertexID(to)] = (
-                        length_m = norm2(frloc .- toloc),
-                        geom = ArchGDAL.createlinestring([frloc, toloc])
-                    )
-                end
-            end
+            # if the end ones are found first, the middle one will have multiple candidates. We connect all the candidates
+            # to the first (closest) candidate, then return that one. This may create a bit of a rat's nest of short links,
+            # but that should not affect routing much.
+            @warn "At location $location, found $(length(existing)) candidate nodes within tolerance $tolerance; choosing one" map(x -> G[x], existing)
+            # closest, rest = Iterators.peel(existing)
+            # frloc = G[closest]
+            # for node in rest
+            #     if !has_edge(G, code_for(G, closest), code_for(G, node))
+            #         toloc = G[node]
+            #         # NB will not work for digraph
+            #         G[closest, node] = (
+            #             length_m = norm2(frloc .- toloc),
+            #             geom = ArchGDAL.createlinestring([frloc, toloc])
+            #         )
+            #     end
+            # end
         end
-        # TODO could use label_for here
-        return VertexID(first(existing))
+        # TODO could use label_forhere
+        return first(existing)
     end
 end
 
@@ -71,6 +80,51 @@ function new_graph()
         weight_function=ed -> ed.length_m,
         default_weight=Inf64
     )
+end
+
+"""
+This adds edges between nodes that are close to one another.
+
+This used to be done by snapping nodes during graph build, but that can be prone to errors
+because it results in nodes being actually moved. Consider this situation:
+
+---a (0.3 m) b--3.1m---c (0.2m) d----
+
+Assuming the vertices are read in a b c d order, b and c will get snapped to a, and d will not get snapped to anything.
+
+Instead, we only snap a very small distance (1e-6 meters). We then add edges between nodes close together.
+"""
+function add_short_edges!(G, max_edge_length)
+    @info "Indexing graph nodes"
+    idx = index_graph_nodes(G)
+    for (i, vlabel) in enumerate(labels(G))
+        if i % 10000 == 0
+            @info "Processed $i / $(nv(G)) vertices"
+        end
+
+        # find nearby vertices
+        loc = G[vlabel]
+
+        # find all candidates ≤ max_edge_length away
+        candidates = filter(
+                map(candidate -> (label_for(G, candidate), norm2(loc .- G[label_for(G, candidate)])),
+                intersects(idx, collect(loc .- max_edge_length), collect(loc .+ max_edge_length)))
+            ) do (_, dist)
+            dist .≤ max_edge_length            
+        end
+
+        for (candidate, geographic_dist) in candidates
+            # doing this inside the loop because each added edge may affect other distances. This is, of course, non-ideal for performance.
+            dists = dijkstra_shortest_paths(G, [code_for(G, vlabel)], maxdist=geographic_dist * NODE_CONNECT_FACTOR).dists
+
+            if dists[code_for(G, candidate)] > geographic_dist * NODE_CONNECT_FACTOR
+                G[vlabel, candidate] = (
+                    length_m=geographic_dist,
+                    geom=ArchGDAL.createlinestring([loc, G[candidate]])
+                )
+            end
+        end
+    end
 end
 
 
@@ -223,4 +277,17 @@ function index_graph_edges(G)
         insert!(edgeidx, length(edges), [env.MinX, env.MinY], [env.MaxX, env.MaxY])
     end
     return (edgeidx, edges)
+end
+
+"""
+Create a spatial index from Graphs.jl vertex codes.
+"""
+function index_graph_nodes(G)
+    nodeidx = RTree(2)
+    for v in vertices(G)
+        loc = G[label_for(G, v)]
+        insert!(nodeidx, v, collect(loc), collect(loc))
+    end
+
+    return nodeidx
 end

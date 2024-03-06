@@ -4,10 +4,13 @@ author: Matt Bhagat-Conway
 ---
 
 ```{julia}
-using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL, MetaGraphsNext, CSV,
-    Plots
+using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL,
+    MetaGraphsNext, CSV, Gadfly, StatsBase
+import Humanize: digitsep
+import Cairo, Fontconfig # gadfly -> png
 import TOML
 import GeoFormatTypes as GFT
+import Dates: now
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
 ```
@@ -21,7 +24,13 @@ We currently have three data files we're working with: sidewalks, shared-use pat
 sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_sidewalks.gpkg"))
 paths = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_shared_use_paths.gpkg"))
 crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "charlotte_crosswalks.shp"))
+
+# there are some new crosswalks since the 2019 Mecklenburg imagery. Including all of them is not
+# practical. However, ones that are identified as priority links are included in this file.
+new_crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "new_crosswalks_since_2019.gpkg"))
 rename!(crosswalks, :geometry=>:geom)
+rename!(new_crosswalks, :geometry=>:geom)
+
 ```
 
 The sidewalks layer has some curves, convert them to linestring
@@ -30,22 +39,10 @@ The sidewalks layer has some curves, convert them to linestring
 sidewalks.geom = ArchGDAL.lineargeom.(sidewalks.geom)
 ```
 
-## Crop to the priority area
-
-```{julia}
-priority_area = GeoDataFrames.read(joinpath(DATA_PATH, "data", "priority_area.gpkg"))
-priority_area.geom = reproject(priority_area.geom, GFT.EPSG(4269), GFT.EPSG(CONFIG["coord_system"]), order=:trad)
-prepared_area = ArchGDAL.preparegeom.(priority_area.geom)
-
-filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), sidewalks)
-filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), crosswalks)
-filter!(f -> any(ArchGDAL.intersects.(prepared_area, Ref(f.geom))), paths);
-```
-
 ## Convert to noded
 
 ```{julia}
-noded = semi_to_fully_noded(sidewalks, crosswalks, paths; snap_tolerance=3, split_tolerance=0.5)
+noded = semi_to_fully_noded(sidewalks, crosswalks, new_crosswalks, paths; snap_tolerance=3, split_tolerance=0.5)
 ```
 
 ## Build network
@@ -53,19 +50,13 @@ noded = semi_to_fully_noded(sidewalks, crosswalks, paths; snap_tolerance=3, spli
 This builds a MetaGraphsNext network from the dataset.
 
 ```{julia}
-G = graph_from_gdal(noded, tolerance=3.5)
+G = graph_from_gdal(noded)
 ```
 
-## Temporarily use a different network
-
-Until we have time to fix the connectivity issues in that one.
+Now, we add short edges (<3.5 m) to connect the graph in places where there are small gaps due to data errors.
 
 ```{julia}
-#osm = GeoDataFrames.read(joinpath(DATA_PATH, "OpenStreetMap", "meck_county_network_projected.gpkg"))
-```
-
-```{julia}
-#G = graph_from_gdal(osm)
+add_short_edges!(G, 3.5)
 ```
 
 ```{julia}
@@ -73,31 +64,9 @@ G = remove_tiny_islands(G, 10)
 ```
 
 ```{julia}
-MissingLinks.graph_to_graphml("graph.graphml", G, pretty=true)
+MissingLinks.graph_to_graphml(joinpath(DATA_PATH, "data", "graph.graphml"), G, pretty=true)
 ```
 
-```{julia}
-matrix = Mmap.mmap(open("distances.bin", "w+"), Matrix{UInt16}, (nv(G), nv(G)); grow=true)
-fill!(matrix, zero(UInt16));
-```
-
-Do the routing
-
-```{julia}
-@time MissingLinks.fill_matrix!(G, matrix)
-```
-
-Find candidate missing links (places where network distance >> geographic distance)
-
-```{julia}
-@time all_candidate_links = identify_potential_missing_links(G, matrix, 100, 1000)
-```
-
-Deduplicate similar links (~5min)
-
-```{julia}
-@time candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
-```
 
 ## Create origin and destination weights
 
@@ -144,15 +113,80 @@ parcels.destination_weight = coalesce.(
 weights = create_graph_weights(G, parcels, [:origin_weight, :destination_weight], 20)
 ```
 
+## Run the core algorithm
+
+```{julia}
+algorithm_start = now()
+dfile = open("distances.bin", "w+")
+matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
+fill!(matrix, zero(UInt16));
+```
+
+Do the routing
+
+```{julia}
+MissingLinks.fill_matrix!(G, matrix)
+```
+
+Find candidate missing links (places where network distance >> geographic distance)
+
+```{julia}
+all_candidate_links = identify_potential_missing_links(G, matrix, 100, 1000)
+```
+
+Deduplicate similar links (~5min)
+
+```{julia}
+candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
+```
+
+
 ## Score the links
 
 ```{julia}
 scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, weights[:, 1], weights[:, 2], 1609 * 2)
 ```
 
+## Timing
+
 ```{julia}
-links_gis = links_to_gdf(G, candidate_links, scores)
-GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis)
+runtime = now() - algorithm_start
+println("Algorithm took $runtime")
 ```
 
-## Figures for the paper
+### Score histogram
+
+```{julia}
+p = plot(
+    DataFrame(:score=>scores),
+    x=:score,
+    Geom.histogram(bincount=50),
+    Guide.xlabel("Aggregate accessibility impact"),
+    Guide.ylabel("Number of links"),
+    Scale.x_continuous(labels=x -> digitsep(round(Int64, x))))
+
+draw(PNG(joinpath(DATA_PATH, "paper", "figures", "scores.png"), dpi=300), p)
+
+p
+```
+
+```{julia}
+median(scores)
+```
+
+```{julia}
+mean(scores)
+```
+
+```{julia}
+links_gis = links_to_gdf(G, candidate_links, scores)
+GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
+```
+
+```{julia}
+close(dfile)
+```
+
+## Street crossings
+
+Most candidate links appear to be street crossings rather than new links between suburban streets. This is probably because of where the destinations are (along streets that are hard to cross). Here we calculate what percentage of links and access-weighted links cross streets

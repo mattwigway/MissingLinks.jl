@@ -35,7 +35,9 @@ function main(raw_args)
     noded_inputs = semi_to_fully_noded(data..., snap_tolerance=config["snap_tolerance"], split_tolerance=config["split_tolerance"])
 
     @info "building graph"
-    G = MissingLinks.graph_from_gdal(noded_inputs, tolerance=config["snap_tolerance"] + config["split_tolerance"])
+    G = MissingLinks.graph_from_gdal(noded_inputs)
+
+    add_short_edges!(G, config["snap_tolerance"] + config["split_tolerance"])
 
     @info "Identifying degree-1 nodes"
     result = ArchGDAL.IGeometry{ArchGDAL.wkbPoint}[]
