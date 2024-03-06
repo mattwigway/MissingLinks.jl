@@ -41,10 +41,20 @@ function find_or_create_vertex!(G, end_node_idx, location, tolerance)
     else
         if length(existing) > 1
             # This could happen e.g. if there are three nearby nodes each tolerance units apart, in a line
-            # if the end ones are found first, the middle one will have multiple candidates
-            @warn "At location $location, found $(length(existing)) candidate nodes within tolerance $tolerance:" map(x -> G[VertexID(x)], existing)
+            # if the end ones are found first, the middle one will have multiple candidates. This doesn't happen that often,
+            # so we just do not snap.
+            @warn "At location $location, found $(length(existing)) candidate nodes within tolerance $tolerance; connecting them before choosing one" map(x -> G[VertexID(x)], existing)
+            for (fr, to) in zip(existing[begin:end-1], existing[begin+1:end])
+                if !has_edge(G, code_for(G, VertexID(fr)), code_for(G, VertexID(to)))
+                    frloc = G[VertexID(fr)]
+                    toloc = G[VertexID(to)]
+                    G[VertexID(fr), VertexID(to)] = (
+                        length_m = norm2(frloc .- toloc),
+                        geom = ArchGDAL.createlinestring([frloc, toloc])
+                    )
+                end
+            end
         end
-
         # TODO could use label_for here
         return VertexID(first(existing))
     end

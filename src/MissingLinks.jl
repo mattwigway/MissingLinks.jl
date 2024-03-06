@@ -1,7 +1,7 @@
 module MissingLinks
 import MetaGraphsNext: MetaGraph, labels, edge_labels, code_for, label_for
 import Graphs: Graph, dijkstra_shortest_paths, nv, is_directed, connected_components, strongly_connected_components, rem_vertex!,
-    outneighbors
+    outneighbors, has_edge
 import LibSpatialIndex: RTree, insert!, intersects
 import GeoInterface, ArchGDAL
 import DataFrames: DataFrame, nrow
