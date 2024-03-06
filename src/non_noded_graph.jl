@@ -41,12 +41,7 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
     # okay - new approach. We record which end is closest, and the offset for the closest point on the line
     # then we scan over that and quantize those offsets
     # Then we create nodes for each geom and offset, and link them up
-    geos_geoms = map(geoms) do gdalgeom
-        coords = map(0:(ArchGDAL.ngeom(gdalgeom) - 1)) do i
-            [ArchGDAL.getx(gdalgeom, i), ArchGDAL.gety(gdalgeom, i)]
-        end
-        LibGEOS.LineString(coords)
-    end
+    geos_geoms = map(gdal_to_geos, geoms)
 
     connections = []
 

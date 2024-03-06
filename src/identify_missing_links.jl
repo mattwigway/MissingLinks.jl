@@ -20,44 +20,124 @@
 #  5. Sum the results. This is the contribution to access of this link.
 
 struct CandidateLink{T}
-    fr::Int64
-    to::Int64
+    fr_edge_src::VertexID
+    fr_edge_tgt::VertexID
+    fr_dist_from_start::T
+    fr_dist_to_end::T
+    to_edge_src::VertexID
+    to_edge_tgt::VertexID
+    to_dist_from_start::T
+    to_dist_to_end::T
     geographic_length_m::Float64
     network_length_m::T
 end
+
+saturated_add(x::T, y) where T = first(x) == typemax(T) ? x : x + round(T, y)
 
 """
 This identifies possible missing links
 """
 function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
     @info "Indexing graph"
-    sidx = RTree(2)
-
-    for node in labels(G)
-        loc = collect(G[node])
-        insert!(sidx, code_for(G, node), loc, loc)
-    end
+    sidx, edges = index_graph_edges(G)
 
     @info "Searching for candidate links"
 
     links = Vector{CandidateLink}()
 
-    # now, find nodes that are nearby geographically, but far away in network space
-    for node in labels(G)
-        # find nearby nodes
-        loc = collect(G[node])
-        nidx = code_for(G, node)
-        map(intersects(sidx, loc .- max_link_dist, loc .+ max_link_dist)) do candidate
-            # from is always less than to, to avoid duplicate links a->b and b->a
-            if candidate > nidx
-                geo_dist = norm2(loc .- G[label_for(G, candidate)])
-                # check distance in both directions. should be no-op with walking, but with
-                # biking we may ultimately use a directed graph.
-                net_dist = min(dmat[nidx, candidate], dmat[candidate, nidx])
-                if geo_dist ≤ max_link_dist && net_dist ≥ min_net_dist
-                    push!(links, CandidateLink{T}(nidx, candidate, geo_dist, net_dist))
+    # Find edges that are nearby geographically, but far in network space
+    # This is kinda slow, multithreading might help, but need to look into thread safety
+    for (i, source_edge) in enumerate(edge_labels(G))
+        if i % 10000 == 0
+            @info "Processed $i / $(ne(G)) edges"
+        end
+
+        source_edge_geom = G[source_edge...].geom
+        source_edge_length_m = G[source_edge...].length_m
+        source_edge_envelope = ArchGDAL.envelope(source_edge_geom)
+        source_edge_fr = code_for(G, source_edge[1])
+        source_edge_to = code_for(G, source_edge[2])
+
+        # find other edges whose bounding boxes intersect the source_edge edge bounding box
+        # expanded by the max_link_dist
+        candidates = map(
+            x -> edges[x],
+            intersects(sidx,
+                [source_edge_envelope.MinX, source_edge_envelope.MinY] .- max_link_dist,
+                [source_edge_envelope.MaxX, source_edge_envelope.MaxY] .+ max_link_dist
+            )
+        )
+
+        for candidate in candidates
+            # first, figure out if this is even worth doing - often they are going to be connected
+            # to one another fairly directly
+            candidate_edge_fr = code_for(G, candidate[1])
+            candidate_edge_to = code_for(G, candidate[2])
+            candidate_edge_length_m = G[candidate...].length_m
+
+            # an upper bound on the net dist is the shortest distance from either end to either other
+            # end plus the total length of both edges (if the closest points geographically
+            # happened to be opposite the closest points topologically).
+
+            # To avoid overflow, instead of adding the lengths here, we subtract them from the max
+            # in the next line.
+            upper_bound_net_dist = min(
+                dmat[source_edge_fr, candidate_edge_to],
+                dmat[source_edge_to, candidate_edge_to],
+                dmat[source_edge_fr, candidate_edge_fr],
+                dmat[source_edge_to, candidate_edge_fr],
+                dmat[candidate_edge_to, source_edge_to],
+                dmat[candidate_edge_fr, source_edge_to],
+                dmat[candidate_edge_to, source_edge_fr],
+                dmat[candidate_edge_fr, source_edge_fr]
+            )
+            
+            # we do the subtraction here instead of adding above to avoid overflow
+            # if upper_bound_net_dist is typemax(UInt16)
+            if upper_bound_net_dist > min_net_dist - source_edge_length_m - candidate_edge_length_m
+                candidate_edge_geom = G[candidate...].geom
+                # we might have a missing link. Calculate geographic distance.
+                geo_distance = LibGEOS.distance(source_edge_geom, candidate_edge_geom)
+
+                if geo_distance ≤ max_link_dist
+                    # Now, find the places that are closest
+                    # possible optimization: move outside loop. But in many cases this will never
+                    # get hit as the conditionals will be false.
+                    point_on_source, point_on_candidate = LibGEOS.nearestPoints(source_edge_geom, candidate_edge_geom)
+                    length_m = LibGEOS.distance(point_on_source, point_on_candidate)
+                    isapprox(length_m, geo_distance, atol=1e-6) ||
+                        error("Nearest points do not have nearest distance: expected $geo_distance, got $length_m, linking edge $source_edge to $candidate")
+
+                    source_dist = LibGEOS.project(source_edge_geom, point_on_source)
+                    candidate_dist = LibGEOS.project(candidate_edge_geom, point_on_candidate)
+
+                    # calculate the actual network distance from these points
+                    net_dist_m = compute_net_distance(dmat, source_edge_fr, source_edge_to, source_dist, source_edge_length_m, candidate_edge_fr, candidate_edge_to, candidate_dist, candidate_edge_length_m)
+
+                    # calculate the distances in UInt16 units
+                    source_dist_from_start = round(T, source_dist)
+                    source_dist_to_end = round(T, source_edge_length_m) - source_dist_from_start
+
+                    candidate_dist_from_start = round(T, candidate_dist)
+                    candidate_dist_to_end = round(T, candidate_edge_length_m) - candidate_dist_from_start
+
+                    # re-check net dist now that we have an actual value, not an upper bound
+                    if net_dist_m > min_net_dist
+                        push!(links, CandidateLink{T}(
+                            source_edge[1],
+                            source_edge[2],
+                            source_dist_from_start,
+                            source_dist_to_end,
+                            candidate[1],
+                            candidate[2],
+                            candidate_dist_from_start,
+                            candidate_dist_to_end,
+                            length_m,
+                            net_dist_m
+                        ))
+                    end
                 end
-            end
+            end            
         end
     end
 
@@ -65,10 +145,37 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 end
 
 """
+Compute the network distance between the two points on a candidate link, by computing
+between from ends and adding fractions of the edge.
+"""
+function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, slength, dfr, dto, ddist, dlength) where T
+    sdist .≤ slength + 1e-12 || error("Source dist greater than overall source length")
+    ddist .≤ dlength + 1e-12 || error("Source dist greater than overall source length")
+
+    senddist = slength - sdist
+    denddist = dlength - ddist
+    min(
+        saturated_add(dmat[sfr, dfr], sdist + ddist),
+        saturated_add(dmat[sto, dfr], senddist + ddist),
+        saturated_add(dmat[sfr, dto], sdist + denddist),
+        saturated_add(dmat[sto, dto], senddist + denddist),
+        saturated_add(dmat[dfr, sfr], ddist + sdist),
+        saturated_add(dmat[dto, sfr], denddist + sdist),
+        saturated_add(dmat[dfr, sto], ddist + senddist),
+        saturated_add(dmat[dto, sto], denddist + senddist)
+    )
+end
+
+"""
 Convenience function that converts links to a GeoDataFrame
 """
 function links_to_gdf(G, links, scores=ones(length(links)))
     gdf = DataFrame(links)
+
+    gdf.fr_edge_src = [x.id for x in gdf.fr_edge_src]
+    gdf.to_edge_src = [x.id for x in gdf.to_edge_src]
+    gdf.fr_edge_tgt = [x.id for x in gdf.fr_edge_tgt]
+    gdf.to_edge_tgt = [x.id for x in gdf.to_edge_tgt]
 
     gdf.network_length_m = ifelse.(
         gdf.network_length_m .≠ typemax(eltype(gdf.network_length_m)),
@@ -79,10 +186,15 @@ function links_to_gdf(G, links, scores=ones(length(links)))
     gdf.score = scores
 
     # add geometry
-    gdf.geometry = map(zip(gdf.fr, gdf.to)) do (fr, to)
-        orig = G[label_for(G, fr)]
-        dest = G[label_for(G, to)]
-        ArchGDAL.createlinestring([orig, dest])
+    gdf.geometry = map(links) do link
+        startg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.fr_edge_src, link.fr_edge_tgt].geom), link.fr_dist_from_start))
+        endg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.to_edge_src, link.to_edge_tgt].geom), link.to_dist_from_start))
+        ArchGDAL.createlinestring([
+            # this can't possibly be the best way to do this
+
+            [ArchGDAL.getx(startg, 0), ArchGDAL.gety(startg, 0)],
+            [ArchGDAL.getx(endg, 0), ArchGDAL.gety(endg, 0)]
+        ])
     end
 
     return gdf
