@@ -20,12 +20,12 @@
 #  5. Sum the results. This is the contribution to access of this link.
 
 struct CandidateLink{T}
-    fr_edge_src::VertexID
-    fr_edge_tgt::VertexID
+    fr_edge_src::Int64
+    fr_edge_tgt::Int64
     fr_dist_from_start::T
     fr_dist_to_end::T
-    to_edge_src::VertexID
-    to_edge_tgt::VertexID
+    to_edge_src::Int64
+    to_edge_tgt::Int64
     to_dist_from_start::T
     to_dist_to_end::T
     geographic_length_m::Float64
@@ -111,9 +111,6 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                     source_dist = LibGEOS.project(source_edge_geom, point_on_source)
                     candidate_dist = LibGEOS.project(candidate_edge_geom, point_on_candidate)
 
-                    # calculate the actual network distance from these points
-                    net_dist_m = compute_net_distance(dmat, source_edge_fr, source_edge_to, source_dist, source_edge_length_m, candidate_edge_fr, candidate_edge_to, candidate_dist, candidate_edge_length_m)
-
                     # calculate the distances in UInt16 units
                     source_dist_from_start = round(T, source_dist)
                     source_dist_to_end = round(T, source_edge_length_m) - source_dist_from_start
@@ -121,15 +118,19 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                     candidate_dist_from_start = round(T, candidate_dist)
                     candidate_dist_to_end = round(T, candidate_edge_length_m) - candidate_dist_from_start
 
+                    # calculate the actual network distance from these points
+                    net_dist_m = compute_net_distance(dmat, source_edge_fr, source_edge_to, source_dist_from_start, source_dist_to_end,
+                        candidate_edge_fr, candidate_edge_to, candidate_dist_from_start, candidate_dist_to_end)
+
                     # re-check net dist now that we have an actual value, not an upper bound
                     if net_dist_m > min_net_dist
                         push!(links, CandidateLink{T}(
-                            source_edge[1],
-                            source_edge[2],
+                            code_for(G, source_edge[1]),
+                            code_for(G, source_edge[2]),
                             source_dist_from_start,
                             source_dist_to_end,
-                            candidate[1],
-                            candidate[2],
+                            code_for(G, candidate[1]),
+                            code_for(G, candidate[2]),
                             candidate_dist_from_start,
                             candidate_dist_to_end,
                             length_m,
@@ -148,12 +149,7 @@ end
 Compute the network distance between the two points on a candidate link, by computing
 between from ends and adding fractions of the edge.
 """
-function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, slength, dfr, dto, ddist, dlength) where T
-    sdist .≤ slength + 1e-12 || error("Source dist greater than overall source length")
-    ddist .≤ dlength + 1e-12 || error("Source dist greater than overall source length")
-
-    senddist = slength - sdist
-    denddist = dlength - ddist
+function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
     min(
         saturated_add(dmat[sfr, dfr], sdist + ddist),
         saturated_add(dmat[sto, dfr], senddist + ddist),
@@ -171,11 +167,6 @@ Convenience function that converts links to a GeoDataFrame
 """
 function links_to_gdf(G, links, scores=ones(length(links)))
     gdf = DataFrame(links)
-
-    gdf.fr_edge_src = [x.id for x in gdf.fr_edge_src]
-    gdf.to_edge_src = [x.id for x in gdf.to_edge_src]
-    gdf.fr_edge_tgt = [x.id for x in gdf.fr_edge_tgt]
-    gdf.to_edge_tgt = [x.id for x in gdf.to_edge_tgt]
 
     gdf.network_length_m = ifelse.(
         gdf.network_length_m .≠ typemax(eltype(gdf.network_length_m)),
@@ -233,14 +224,43 @@ perforce connecting the area around the from node to the area around the to node
 counterfactual: for any two nodes that are within x meters of one of the nodes of the link, they are at most
 2x meters apart (because there is a path through the node).
 """
-function deduplicate_links(links, dmat, sphere_of_influence_radius)
+function deduplicate_links(links::AbstractVector{CandidateLink}, dmat, sphere_of_influence_radius)
+    # New algorithm:
+    # We still define a node-based "sphere of influence" that is radius - distance_to_end
+    # meters from each end of the source and target edges of a candidate link. However
+    # it is now a loose sphere, and before determining if another link fits in it we check that the
+    # actual network distance between the points where the links start/end is within the sphere. The
+    # list of vertices is a prefilter, as at least one of the vertices of another link must be in the
+    # sphere of influence vertices if the link is in the sphere of influence
+
     spheres_of_influence = SphereOfInfluence[]
     
     for link in links
         # check if this link is in a sphere of influence
         in_soi = false
         for soi in spheres_of_influence
-            if link.fr ∈ soi.nodes && link.to ∈ soi.nodes
+            # one end of each of the edges must be in the sphere of influence
+            if (link.fr_edge_src ∈ soi.nodes || link.fr_edge_tgt ∈ soi.nodes) &&
+                (link.to_edge_src ∈ soi.nodes || link.to_edge_tgt ∈ soi.nodes) &&
+                (
+                    # we don't know whether the links face the same direction or not
+                    (
+                        compute_net_distance(dmat,
+                            link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
+                            soi.link.fr_edge_src, soi.link.fr_edge_tgt, soi.link.fr_dist_from_start, soi.link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
+                        compute_net_distance(dmat,
+                            link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
+                            soi.link.to_edge_src, soi.link.to_edge_tgt, soi.link.to_dist_from_start, soi.link.to_dist_to_end) ≤ sphere_of_influence_radius
+                    ) ||
+                    (
+                        compute_net_distance(dmat,
+                            link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
+                            soi.link.to_edge_src, soi.link.to_edge_tgt, soi.link.to_dist_from_start, soi.link.to_dist_to_end) ≤ sphere_of_influence_radius &&
+                        compute_net_distance(dmat,
+                            link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
+                            soi.link.fr_edge_src, soi.link.fr_edge_tgt, soi.link.fr_dist_from_start, soi.link.fr_dist_to_end) ≤ sphere_of_influence_radius
+                    )
+                )
                 # note: order matters here. it is possible for a link to be in two spheres of influence,
                 # so ordering might change results.
                 in_soi = true
@@ -256,11 +276,13 @@ function deduplicate_links(links, dmat, sphere_of_influence_radius)
         end
 
         if !in_soi
-            # not in a sphere of influence, create one
-            nodes = vcat(
-                findall(dmat[:, link.fr] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to] .< sphere_of_influence_radius)
-            )
+            # not in a sphere of influence, create one - everything near either end
+            nodes = unique(vcat(
+                findall(dmat[:, link.fr_edge_src] .< sphere_of_influence_radius - link.fr_dist_from_start),
+                findall(dmat[:, link.fr_edge_tgt] .< sphere_of_influence_radius - link.fr_dist_to_end),
+                findall(dmat[:, link.to_edge_src] .< sphere_of_influence_radius - link.to_dist_from_start),
+                findall(dmat[:, link.to_edge_tgt] .< sphere_of_influence_radius - link.to_dist_to_end)
+            ))
 
             push!(spheres_of_influence, SphereOfInfluence(nodes, link))
         end
