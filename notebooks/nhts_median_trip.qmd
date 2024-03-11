@@ -1,0 +1,21 @@
+---
+title: NHTS median trip
+---
+
+Find the median trip length in the NHTS.
+
+```{julia}
+using DataFrames, CSV, StatsBase
+import TOML
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+DATA_PATH = CONFIG["data_path"]
+```
+
+```{julia}
+nhts_tr = CSV.read(joinpath(DATA_PATH, "nhts", "trippub.csv"), DataFrame)
+```
+
+```{julia}
+car_tr = nhts_tr[nhts_tr.TRPTRANS .∈ Ref([1, 2, 3, 4]), :]
+quantile(car_tr.TRPMILES, StatsBase.weights(car_tr.WTTRDFIN), [0.1, 0.25, 0.5, 0.75])
+```
