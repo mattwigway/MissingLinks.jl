@@ -181,6 +181,8 @@ mean(scores)
 ```{julia}
 links_gis = links_to_gdf(G, candidate_links, scores)
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
+
+# Note: link at 443397.71, 166211.30 has zero length reported but 0.26m in GIS. I assume this is because we round the offsets.
 ```
 
 ```{julia}
