@@ -124,7 +124,7 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                             code_for(G, candidate[2]),
                             candidate_dist_from_start,
                             candidate_dist_to_end,
-                            length_m,
+                            round(T, length_m),
                             net_dist_m
                         ))
                     end

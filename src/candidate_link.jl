@@ -11,7 +11,7 @@ struct CandidateLink{T}
     to_edge_tgt::Int64
     to_dist_from_start::T
     to_dist_to_end::T
-    geographic_length_m::Float64
+    geographic_length_m::T
     network_length_m::T
 end
 
