@@ -19,19 +19,6 @@
 #  4. Repeat with the second node of the new link
 #  5. Sum the results. This is the contribution to access of this link.
 
-struct CandidateLink{T}
-    fr_edge_src::Int64
-    fr_edge_tgt::Int64
-    fr_dist_from_start::T
-    fr_dist_to_end::T
-    to_edge_src::Int64
-    to_edge_tgt::Int64
-    to_dist_from_start::T
-    to_dist_to_end::T
-    geographic_length_m::Float64
-    network_length_m::T
-end
-
 saturated_add(x::T, y) where T = first(x) == typemax(T) ? x : x + round(T, y)
 
 """
@@ -43,7 +30,7 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 
     @info "Searching for candidate links"
 
-    links = Vector{CandidateLink}()
+    links = Vector{CandidateLink{T}}()
 
     # Find edges that are nearby geographically, but far in network space
     # This is kinda slow, multithreading might help, but need to look into thread safety
@@ -51,6 +38,8 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
         if i % 10000 == 0
             @info "Processed $i / $(ne(G)) edges"
         end
+
+        @assert source_edge[1] ≤ source_edge[2]
 
         source_edge_geom = G[source_edge...].geom
         source_edge_length_m = G[source_edge...].length_m
@@ -69,6 +58,8 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
         )
 
         for candidate in candidates
+            # all geometries are coded with lower-numbered node first
+            @assert candidate[1] ≤ candidate[2]
             # first, figure out if this is even worth doing - often they are going to be connected
             # to one another fairly directly
             candidate_edge_fr = code_for(G, candidate[1])
@@ -178,8 +169,8 @@ function links_to_gdf(G, links, scores=ones(length(links)))
 
     # add geometry
     gdf.geometry = map(links) do link
-        startg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.fr_edge_src, link.fr_edge_tgt].geom), link.fr_dist_from_start))
-        endg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.to_edge_src, link.to_edge_tgt].geom), link.to_dist_from_start))
+        startg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[label_for(G, link.fr_edge_src), label_for(G, link.fr_edge_tgt)].geom), link.fr_dist_from_start))
+        endg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[label_for(G, link.to_edge_src), label_for(G, link.to_edge_tgt)].geom), link.to_dist_from_start))
         ArchGDAL.createlinestring([
             # this can't possibly be the best way to do this
 
@@ -189,104 +180,4 @@ function links_to_gdf(G, links, scores=ones(length(links)))
     end
 
     return gdf
-end
-
-mutable struct SphereOfInfluence
-    nodes::Vector{Int64}
-    link::CandidateLink
-end
-
-"""
-This is a heuristic function to deduplicate links. Consider the situation below.
-Double lines are existing roads. Here, you have the ends of two blocks in different subdivisions,
-that do not connect.
-
-    ====a   c===
-       ||   ||
-    ====b   d===
-
-There are four ways to connect the streets above (assuming we only make connections at nodes):
-AC, AD, BC, and BD. Clearly, they all provide essentially the same level of access, and there's no
-reason to consider all of them.
-
-    ====a---c===
-       || X ||
-    ====b---d===
-
-This function greedily groups connections using the following algorithm. For each connection,
-it defines a "sphere of influence" which is all nodes within 100m network distance of the from node,
-and all nodes within 100m network distance of the to node. If any subsequent link connects two nodes
-in this sphere of influence, whichever link has the shortest geographic distance is retained.
-
-Note that, with an undirected graph and as long as the min network distance for proposing a link is more
-than twice the radius of the sphere of influence, any link connecting two nodes in the sphere of influence is
-perforce connecting the area around the from node to the area around the to node or vice versa. Consider the
-counterfactual: for any two nodes that are within x meters of one of the nodes of the link, they are at most
-2x meters apart (because there is a path through the node).
-"""
-function deduplicate_links(links::AbstractVector{CandidateLink}, dmat, sphere_of_influence_radius)
-    # New algorithm:
-    # We still define a node-based "sphere of influence" that is radius - distance_to_end
-    # meters from each end of the source and target edges of a candidate link. However
-    # it is now a loose sphere, and before determining if another link fits in it we check that the
-    # actual network distance between the points where the links start/end is within the sphere. The
-    # list of vertices is a prefilter, as at least one of the vertices of another link must be in the
-    # sphere of influence vertices if the link is in the sphere of influence
-
-    spheres_of_influence = SphereOfInfluence[]
-    
-    for link in links
-        # check if this link is in a sphere of influence
-        in_soi = false
-        for soi in spheres_of_influence
-            # one end of each of the edges must be in the sphere of influence
-            if (link.fr_edge_src ∈ soi.nodes || link.fr_edge_tgt ∈ soi.nodes) &&
-                (link.to_edge_src ∈ soi.nodes || link.to_edge_tgt ∈ soi.nodes) &&
-                (
-                    # we don't know whether the links face the same direction or not
-                    (
-                        compute_net_distance(dmat,
-                            link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.link.fr_edge_src, soi.link.fr_edge_tgt, soi.link.fr_dist_from_start, soi.link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
-                        compute_net_distance(dmat,
-                            link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.link.to_edge_src, soi.link.to_edge_tgt, soi.link.to_dist_from_start, soi.link.to_dist_to_end) ≤ sphere_of_influence_radius
-                    ) ||
-                    (
-                        compute_net_distance(dmat,
-                            link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.link.to_edge_src, soi.link.to_edge_tgt, soi.link.to_dist_from_start, soi.link.to_dist_to_end) ≤ sphere_of_influence_radius &&
-                        compute_net_distance(dmat,
-                            link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.link.fr_edge_src, soi.link.fr_edge_tgt, soi.link.fr_dist_from_start, soi.link.fr_dist_to_end) ≤ sphere_of_influence_radius
-                    )
-                )
-                # note: order matters here. it is possible for a link to be in two spheres of influence,
-                # so ordering might change results.
-                in_soi = true
-
-                # if it's better than the best link found for this soi, retain it
-                if link.geographic_length_m < soi.link.geographic_length_m
-                    soi.link = link
-                end
-
-                # don't keep considering spheres of influence
-                break
-            end
-        end
-
-        if !in_soi
-            # not in a sphere of influence, create one - everything near either end
-            nodes = unique(vcat(
-                findall(dmat[:, link.fr_edge_src] .< sphere_of_influence_radius - link.fr_dist_from_start),
-                findall(dmat[:, link.fr_edge_tgt] .< sphere_of_influence_radius - link.fr_dist_to_end),
-                findall(dmat[:, link.to_edge_src] .< sphere_of_influence_radius - link.to_dist_from_start),
-                findall(dmat[:, link.to_edge_tgt] .< sphere_of_influence_radius - link.to_dist_to_end)
-            ))
-
-            push!(spheres_of_influence, SphereOfInfluence(nodes, link))
-        end
-    end
-
-    return collect(getfield.(spheres_of_influence, :link))
 end

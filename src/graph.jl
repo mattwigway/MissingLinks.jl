@@ -4,6 +4,9 @@ EdgeData = @NamedTuple{length_m::Float64, geom::ArchGDAL.IGeometry{ArchGDAL.wkbL
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance
 const NODE_CONNECT_FACTOR = 2
 
+Base.reverse(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) =
+    ArchGDAL.createlinestring([ArchGDAL.getpoint(g, i) for i in (ArchGDAL.ngeom(g) - 1):-1:0])
+
 "Run the provided function on each constituent geometry of a multigeometry"
 function for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString})
     for i in 1:ArchGDAL.ngeom(g)
@@ -150,6 +153,12 @@ function graph_from_gdal(layers...; tolerance=1e-6)
             endpt = get_last_point(geom)[1:2]
             frv = find_or_create_vertex!(G, end_node_idx, startpt, tolerance)
             tov = find_or_create_vertex!(G, end_node_idx, endpt, tolerance)
+
+            # geometry always goes from lower-numbered to higher-numbered node
+            if tov < frv
+                frv, tov = tov, frv
+                geom = reverse(geom)
+            end
 
             G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
         end
