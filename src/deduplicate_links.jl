@@ -71,24 +71,24 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
                     (
                         compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.origina_link.fr_edge_src, soi.origina_link.fr_edge_tgt, soi.origina_link.fr_dist_from_start, soi.origina_link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
+                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
                         compute_net_distance(dmat,
                             link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.origina_link.to_edge_src, soi.origina_link.to_edge_tgt, soi.origina_link.to_dist_from_start, soi.origina_link.to_dist_to_end) ≤ sphere_of_influence_radius
+                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius
                     ) ||
                     (
                         compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.origina_link.to_edge_src, soi.origina_link.to_edge_tgt, soi.origina_link.to_dist_from_start, soi.origina_link.to_dist_to_end) ≤ sphere_of_influence_radius &&
+                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius &&
                         compute_net_distance(dmat,
                             link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.origina_link.fr_edge_src, soi.origina_link.fr_edge_tgt, soi.origina_link.fr_dist_from_start, soi.origina_link.fr_dist_to_end) ≤ sphere_of_influence_radius
+                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end) ≤ sphere_of_influence_radius
                     )
                 )
                 # note: order matters here. it is possible for a link to be in two spheres of influence,
                 # so ordering might change results.
                 in_soi = true
-                push!(soi.other_links, link)
+                push!(soi.links, link)
 
                 # don't keep considering spheres of influence
                 break
