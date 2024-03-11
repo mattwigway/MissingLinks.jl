@@ -12,8 +12,10 @@ import ThreadsX
 import LibGEOS
 
 include("graph.jl")
+include("candidate_link.jl")
 include("node_to_node.jl")
 include("identify_missing_links.jl")
+include("deduplicate_links.jl")
 include("score.jl")
 include("weight_nodes.jl")
 include("non_noded_graph.jl")
