@@ -1,0 +1,2 @@
+# For some reason Julia cannot infer the return type and crashes rather than 
+get_coords_xy(geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = map(p -> collect(ArchGDAL.getpoint(geom, p - 1)[1:2]), 1:ArchGDAL.ngeom(geom))

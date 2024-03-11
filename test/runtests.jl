@@ -1,6 +1,3 @@
-using MissingLinks
-using Test
+using TestItemRunner
 
-@testset "MissingLinks.jl" begin
-    # Write your tests here.
-end
+@run_package_tests

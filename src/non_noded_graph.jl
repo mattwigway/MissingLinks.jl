@@ -99,37 +99,3 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
 
     return DataFrame(:geom=>result)
 end
-
-function geom_between(geom::LibGEOS.LineString, pos1, pos2)
-    pos1 < pos2 || error("pos1 must be less than pos2")
-    startpt = LibGEOS.interpolate(geom, pos1)
-
-    coords = [[LibGEOS.getGeomX(startpt), LibGEOS.getGeomY(startpt)]]
-
-    cumulative_dist = zero(Float64)
-    # skip first and last as they will be handled by startpt and endpt
-    for ptidx in 2:(LibGEOS.numPoints(geom) - 1)
-        lastpt = LibGEOS.getPoint(geom, ptidx - 1)
-        thispt = LibGEOS.getPoint(geom, ptidx)
-        cumulative_dist += LibGEOS.distance(lastpt, thispt)
-        
-        if cumulative_dist > pos2
-            break
-        end
-
-        if cumulative_dist > pos1
-            newcoord = [LibGEOS.getGeomX(thispt), LibGEOS.getGeomY(thispt)]
-            if !(newcoord ≈ coords[end])
-                push!(coords, newcoord)
-            end
-        end
-    end
-
-    endpt = LibGEOS.interpolate(geom, pos2)
-    newcoord = [LibGEOS.getGeomX(endpt), LibGEOS.getGeomY(endpt)]
-    if !(newcoord ≈ coords[end])
-        push!(coords, newcoord)
-    end
-
-    return ArchGDAL.createlinestring(coords)
-end

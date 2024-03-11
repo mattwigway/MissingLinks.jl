@@ -134,7 +134,7 @@ end
 """
 This builds a graph from one or more GeoDataFrame layers.
 """
-function graph_from_gdal(layers...; tolerance=1e-6)
+function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
     G = new_graph()
 
     # pass 1: index all end nodes (connections), and add vertices to graph
@@ -147,20 +147,23 @@ function graph_from_gdal(layers...; tolerance=1e-6)
             @info "Processed $i / $total geometries"
         end
 
-        for_each_geom(multigeom) do geom
-            # add to graph
-            startpt = get_first_point(geom)[1:2]
-            endpt = get_last_point(geom)[1:2]
-            frv = find_or_create_vertex!(G, end_node_idx, startpt, tolerance)
-            tov = find_or_create_vertex!(G, end_node_idx, endpt, tolerance)
+        for_each_geom(multigeom) do biggeom
+            # break_long_line is a no-op on lines shorter than max_edge_length
+            for geom in break_long_line(biggeom, max_edge_length)
+                # add to graph
+                startpt = get_first_point(geom)[1:2]
+                endpt = get_last_point(geom)[1:2]
+                frv = find_or_create_vertex!(G, end_node_idx, startpt, tolerance)
+                tov = find_or_create_vertex!(G, end_node_idx, endpt, tolerance)
 
-            # geometry always goes from lower-numbered to higher-numbered node
-            if tov < frv
-                frv, tov = tov, frv
-                geom = reverse(geom)
+                # geometry always goes from lower-numbered to higher-numbered node
+                if tov < frv
+                    frv, tov = tov, frv
+                    geom = reverse(geom)
+                end
+
+                G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
             end
-
-            G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
         end
     end
 
