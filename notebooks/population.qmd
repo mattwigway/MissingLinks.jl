@@ -34,12 +34,15 @@ census = get_decennial(
 ## Read parcel data
 
 ```{r}
-parcels = read_sf(file.path(config$data_path, "data", "parcels", "Parcel_LandUse.shp")) %>%
+parcels = read_sf(file.path(config$data_path, "data", "parcels", "Parcel_LandUse_2019.shp")) %>%
+        # for some reason many multifamily parcels are duplicated - ?
+        group_by(pid) %>%
+        slice(1) %>%
         mutate(
-            landuse_s=case_match(txt_Land_1,
+            landuse_s=case_match(txt_FullDe,
                 c("SINGLE FAMILY RESIDENTIAL", "SINGLE FAMILY RESIDENTIAL - ACREAGE",
                     "SINGLE FAMILY RESIDENTIAL - GOLF",  "SINGLE FAMILY RESIDENTIAL - RIVER", "SINGLE FAMILY RESIDENTIAL - WATER VIEW",  
-                    "SINGLE FAMILY RESIDENTIAL - WATERFRONT",  "SINGLE FAMILY RESIDENTIAL GATED COMMUNITY", "SINGLE FAMILY RESIDENTIAL MINI FARM/ESTATE",
+                    "SINGLE FAMILY RESIDENTIAL - WATERFRONT",  "SINGLE FAMILY RESIDENTIAL GATED COMMUNITY", "SINGLE FAMILY RESIDENTIAL MINI FARM/ESTATE", "RURAL HOMESITE",
                     "R101", "RESIDENTIAL AFFORDABLE HOUSING") ~ "Detached_single_family",
                 c("TOWN HOUSE  GOLF COURSE FRONTAGE", "TOWN HOUSE  SFR" , "TOWN HOUSE  WATER ACCESS" , 
                     "TOWN HOUSE  WATER FRONTAGE" , "TOWNHOUSE AFFORDABLE HOUSING",
@@ -47,8 +50,8 @@ parcels = read_sf(file.path(config$data_path, "data", "parcels", "Parcel_LandUse
                 c("MOBILE HOME HS", "MOBILE HOME PARK", "MOBILE HOME SUBDIVISION") ~ "Mobile_home", 
                 c("MULTI FAMILTY AFFORDABLE HOUSING", "MULTI FAMILY",
                 "MULTI FAMILY DUPLEX/TRIPLEX", "MULTI FAMILY GARDEN", "MULTI FAMILY HIGH RISE",
-                "MULTI FAMILY TOWNHOUSE", "MULTI FAMILY WATER ACCESS",
-                "CONDO AFFORDABLE HOUSING", 
+                "MULTI FAMILY TOWNHOUSE", "MULTI FAMILY WATER ACCESS", "MUNICIPAL HOUSING AUTHORITY",
+                "CONDO AFFORDABLE HOUSING", "HOME FOR THE AGED\r\nHOME FOR THE AGED", "NURSING HOME",
                 "CONDOMINIUM","CONDOMINIUM HIGH RISE", 
                 "CONDOMINIUM WATER FRONTAGE", "CONDOMINIUM WATER VIEW") ~ "Multi_family"
         )
@@ -61,32 +64,55 @@ pcentroid = st_transform(pcentroid, 4269)
 ## Spatial join
 
 ```{r}
-parcels_with_census = st_join(pcentroid, census, st_within)
+parcels_with_census = st_intersection(parcels, st_transform(census, st_crs(parcels)))
+
+parcels_with_census = parcels_with_census %>%
+    mutate(area_ac = as.double(st_area(.)) / (660 * 66))
 ```
 
 ## Create features
 
 ```{r}
 regdata = parcels_with_census %>%
+    st_drop_geometry() %>%
+    as_tibble() %>%
     mutate() %>%
     group_by(GEOID, landuse_s) %>%
     summarize(
         count = n(),
         origin_weight=first(origin_weight),
-        area_ac = sum(Acres)
+        area_ac = sum(area_ac)
     ) %>%
     ungroup() %>%
-    pivot_wider(names_from="landuse_s", values_from=c("count", "area_ac")) %>%
-    select(matches("origin_weight|count_|area_ac_")) %>%
-    mutate(across(matches("count_|area_ac_"), \(x) replace_na(x, 0))) %>%
-    st_drop_geometry()
+    pivot_wider(id_cols=c("GEOID", "origin_weight"), names_from="landuse_s", values_from=c("count", "area_ac")) %>%
+    mutate(across(matches("count_|area_ac_"), \(x) replace_na(x, 0)))
+
+stopifnot(!any(duplicated(regdata$GEOID)))
 ```
 
+## Look for outliers
+
+```{r}
+regdata = regdata %>%
+    mutate(
+        total_area = rowSums(select(., starts_with("area_ac_"))),
+        dens_on_res_land = origin_weight / total_area
+        )
+```
+
+
+```{r}
+regdata$entropy = regdata %>%
+    select(starts_with("area_ac_")) %>%
+    mutate(total=rowSums(.)) %>%
+    mutate(across(everything(), \(x) (x + 0.01) / total * log((x + 0.01) / total))) %>%
+    rowSums() * -1
+```
 
 ## Run model
 
 ```{r}
-model = lm(origin_weight~count_Detached_single_family+area_ac_Attached_single_family+area_ac_Mobile_home+area_ac_Multi_family-1, regdata)
+model = lm(origin_weight~area_ac_Detached_single_family+area_ac_Attached_single_family+area_ac_Mobile_home+area_ac_Multi_family-1, filter(regdata, origin_weight > 0))
 summary(model)
 ```
 
