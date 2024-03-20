@@ -34,143 +34,68 @@ census = get_decennial(
 ## Read parcel data
 
 ```{r}
-parcels = read_sf(file.path(config$data_path, "data", "parcels", "Parcel_LandUse_2019.shp")) %>%
-        # for some reason many multifamily parcels are duplicated - ?
-        group_by(pid) %>%
-        slice(1) %>%
-        mutate(
-            landuse_s=case_match(txt_FullDe,
-                c("SINGLE FAMILY RESIDENTIAL", "SINGLE FAMILY RESIDENTIAL - ACREAGE",
-                    "SINGLE FAMILY RESIDENTIAL - GOLF",  "SINGLE FAMILY RESIDENTIAL - RIVER", "SINGLE FAMILY RESIDENTIAL - WATER VIEW",  
-                    "SINGLE FAMILY RESIDENTIAL - WATERFRONT",  "SINGLE FAMILY RESIDENTIAL GATED COMMUNITY", "SINGLE FAMILY RESIDENTIAL MINI FARM/ESTATE", "RURAL HOMESITE",
-                    "R101", "RESIDENTIAL AFFORDABLE HOUSING") ~ "Detached_single_family",
-                c("TOWN HOUSE  GOLF COURSE FRONTAGE", "TOWN HOUSE  SFR" , "TOWN HOUSE  WATER ACCESS" , 
-                    "TOWN HOUSE  WATER FRONTAGE" , "TOWNHOUSE AFFORDABLE HOUSING",
-                    "PATIO HOME", "PATIO HOME - WATERFRONT") ~ "Attached_single_family",
-                c("MOBILE HOME HS", "MOBILE HOME PARK", "MOBILE HOME SUBDIVISION") ~ "Mobile_home", 
-                c("MULTI FAMILTY AFFORDABLE HOUSING", "MULTI FAMILY",
-                "MULTI FAMILY DUPLEX/TRIPLEX", "MULTI FAMILY GARDEN", "MULTI FAMILY HIGH RISE",
-                "MULTI FAMILY TOWNHOUSE", "MULTI FAMILY WATER ACCESS", "MUNICIPAL HOUSING AUTHORITY",
-                "CONDO AFFORDABLE HOUSING", "HOME FOR THE AGED\r\nHOME FOR THE AGED", "NURSING HOME",
-                "CONDOMINIUM","CONDOMINIUM HIGH RISE", 
-                "CONDOMINIUM WATER FRONTAGE", "CONDOMINIUM WATER VIEW") ~ "Multi_family"
-        )
-    ) %>%
-    filter(!is.na(landuse_s))
-pcentroid = st_centroid(parcels)
-pcentroid = st_transform(pcentroid, 4269)
+parcels = read_sf(file.path(config$data_path, "data", "parcels", "Parcel_TaxData.shp"))
 ```
+
+Filter to just residential.
+
+It seems that when there is a large condo complex, they do not have a parcel that represents the common areas separately from the individual units; when there is a condo or townhome complex there are almost never records with more than zero units.
 
 ## Spatial join
 
 ```{r}
-parcels_with_census = st_intersection(parcels, st_transform(census, st_crs(parcels)))
-
-parcels_with_census = parcels_with_census %>%
-    mutate(area_ac = as.double(st_area(.)) / (660 * 66))
-```
-
-## Create features
-
-```{r}
-regdata = parcels_with_census %>%
-    st_drop_geometry() %>%
-    as_tibble() %>%
-    mutate() %>%
-    group_by(GEOID, landuse_s) %>%
-    summarize(
-        count = n(),
-        origin_weight=first(origin_weight),
-        area_ac = sum(area_ac)
-    ) %>%
-    ungroup() %>%
-    pivot_wider(id_cols=c("GEOID", "origin_weight"), names_from="landuse_s", values_from=c("count", "area_ac")) %>%
-    mutate(across(matches("count_|area_ac_"), \(x) replace_na(x, 0)))
-
-stopifnot(!any(duplicated(regdata$GEOID)))
-```
-
-## Look for outliers
-
-```{r}
-regdata = regdata %>%
+parcels_with_census = parcels %>%
+    filter((descproper %in% c("Single-Family", "Condo/Townhome", "Multi-Family", "Manufactured") | descbuildi=="DORMITORY") & units > 0 & !is.na(units)) %>%
+    mutate(original_area_ac=as.double(st_area(.)) / (660 * 66)) %>%
+    st_intersection(st_transform(census, st_crs(parcels))) %>%
     mutate(
-        total_area = rowSums(select(., starts_with("area_ac_"))),
-        dens_on_res_land = origin_weight / total_area
-        )
+        area_ac = as.double(st_area(.)) / (660 * 66),
+        # when properties cross block boundaries, allocate units between blocks based on
+        # area
+        est_units = units * area_ac / original_area_ac
+    )
 ```
 
 
-```{r}
-regdata$entropy = regdata %>%
-    select(starts_with("area_ac_")) %>%
-    mutate(total=rowSums(.)) %>%
-    mutate(across(everything(), \(x) (x + 0.01) / total * log((x + 0.01) / total))) %>%
-    rowSums() * -1
-```
-
-## Run model
-
-```{r}
-model = lm(origin_weight~area_ac_Detached_single_family+area_ac_Attached_single_family+area_ac_Mobile_home+area_ac_Multi_family-1, filter(regdata, origin_weight > 0))
-summary(model)
-```
-
-## Attach estimates to parcels
-
-```{r}
-parcels_with_census = parcels_with_census %>%
-    mutate(est_pop=case_match(
-        landuse_s,
-        "Detached_single_family" ~ coefficients(model)[["count_Detached_single_family"]],
-        "Attached_single_family" ~ coefficients(model)[["area_ac_Attached_single_family"]] * Acres,
-        "Mobile_home" ~ coefficients(model)[["area_ac_Mobile_home"]] * Acres,
-        "Multi_family" ~ coefficients(model)[["area_ac_Multi_family"]] * Acres
-    ))
-```
-
-## Scale estimates to match block populations
-
-This is just intended to disaggregate block-level estimates from the Census.
+## Disaggregate by unit counts
 
 ```{r}
 parcels_with_census = parcels_with_census %>%
     group_by(GEOID) %>%
-    mutate(scaled_est_pop = est_pop * first(origin_weight) / sum(est_pop))
+    mutate(est_pop=origin_weight * est_units / sum(est_units)) %>%
+    ungroup()
 ```
+
+### Sanity checks
+
+How many people are assigned to each unit?
 
 ```{r}
-# the really high ones are big high rises in mostly non-residential blocks, which seem to also
-# often have very low reported acreages
-ggplot(parcels_with_census, aes(x=scaled_est_pop / est_pop)) +
-    geom_histogram()
+ppu = parcels_with_census %>%
+    group_by(GEOID) %>%
+    summarize(persons_per_unit=sum(est_pop) / sum(est_units), est_pop=sum(est_pop))
+    
+ppu %>% 
+    ggplot(aes(x=pmin(persons_per_unit, 10))) +
+        geom_histogram()
+
 ```
 
-## Attach to original parcel geometries
-
-```{r}
-parcels = parcels_with_census %>%
-    ungroup() %>%
-    st_drop_geometry() %>%
-    select(pid, scaled_est_pop) %>%
-    right_join(parcels, by="pid") %>%
-    rename(origin_weight="scaled_est_pop")
-```
-
-## Sanity check
+## Do counts total to what we expect?
 
 ```{r}
 parcels_with_census %>%
     group_by(GEOID) %>%
-    summarize(disag_pop=sum(scaled_est_pop), act_pop=first(origin_weight)) %>%
-    # a few NAs due to boundary effects
-    with(stopifnot(all(is.na(GEOID) | abs(disag_pop - act_pop) < 0.1)))
-
-stopifnot(sum(is.na(parcels_with_census$GEOID)) == 16)
+    summarize(
+        expected = first(origin_weight),
+        observed = sum(est_pop)
+    ) %>%
+    filter(!is.na(observed)) %>%
+    with(stopifnot(all.equal(expected, observed)))
 ```
 
 ## Save output
 
 ```{r}
-write_sf(parcels, file.path(config$data_path, "data", "parcels", "parcels_with_estimated_population.gpkg"))
+write_sf(parcels_with_census, file.path(config$data_path, "data", "parcels", "parcels_with_estimated_population.gpkg"))
 ```
