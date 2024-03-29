@@ -5,7 +5,7 @@ author: Matt Bhagat-Conway
 
 ```{julia}
 using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL,
-    MetaGraphsNext, CSV, Gadfly, StatsBase
+    MetaGraphsNext, CSV, Gadfly, StatsBase, DataFramesMeta
 import Humanize: digitsep
 import Cairo, Fontconfig # gadfly -> png
 import TOML
@@ -13,6 +13,7 @@ import GeoFormatTypes as GFT
 import Dates: now
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
+DATAAXLE_PATH = CONFIG["dataaxle_path"]
 ```
 
 ## Read data
@@ -21,16 +22,14 @@ We currently have three data files we're working with: sidewalks, shared-use pat
 
 ```{julia}
 # TODO clean up these paths
-sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_sidewalks.gpkg"))
-paths = GeoDataFrames.read(joinpath(DATA_PATH, "RA", "Data", "charlotte_shared_use_paths.gpkg"))
-crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "charlotte_crosswalks.shp"))
+sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_sidewalks_mwbc.gpkg"))
+paths = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_shared_use_paths_mwbc.gpkg"))
+crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_crosswalks_split_mwbc.gpkg"))
 
 # there are some new crosswalks since the 2019 Mecklenburg imagery. Including all of them is not
 # practical. However, ones that are identified as priority links are included in this file.
-new_crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "new_crosswalks_since_2019.gpkg"))
-rename!(crosswalks, :geometry=>:geom)
-rename!(new_crosswalks, :geometry=>:geom)
-
+new_crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "new_crosswalks_since_2019_mwbc.gpkg"))
+rename!(new_crosswalks, :geometry => :geom)
 ```
 
 The sidewalks layer has some curves, convert them to linestring
@@ -71,46 +70,71 @@ MissingLinks.graph_to_graphml(joinpath(DATA_PATH, "data", "graph.graphml"), G, p
 ## Create origin and destination weights
 
 ```{julia}
-parcels = GeoDataFrames.read(joinpath(DATA_PATH, "data", "parcels", "Parcel_LandUse.shp"));
+parcels = GeoDataFrames.read(joinpath(DATA_PATH, "data", "parcels", "parcels_with_estimated_population.gpkg"));
 # reproject state plane feet to meters
-parcels.geometry = reproject(parcels.geometry, GFT.EPSG(2264), GFT.EPSG(32119));
+parcels.geom = reproject(parcels.geom, GFT.EPSG(2264), GFT.EPSG(32119));
+parcels = parcels[.!ismissing.(parcels.est_pop), :]
+metadata!(parcels, "geometrycolumns", (:geom,))
 ```
 
 ```{julia}
-# write out the land use codes to a file
-df = DataFrame("land_use" => unique(parcels.txt_Land_1))
-df.origins_per_parcel .= missing
-df.origins_per_acre .= missing
-df.destinations_per_parcel .= missing
-df.destinations_per_acre .= missing
-CSV.write(joinpath(DATA_PATH, "data", "parcels", "land_use_weights_template.csv"), df)
+origin_weights = create_graph_weights(G, parcels, [:est_pop], 20)[:, 1]
+```
+
+Destinations are a little trickier because they're split across multiple files. We have a parcels file that has destinations snapped to parcels (for destinations that are likely to be in the middle of parcels), point features (for bus stops), and area features (neighborhood and regional parks).
+
+```{julia}
+dest_parcels = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "weighted_parcels.gpkg"))
+
+# already in EPSG:32119
+
+dest_weights_snapped = create_graph_weights(G, dest_parcels, [:dest_weight], 20)[:, 1]
+
+# What percent of weight successfully snapped? Expected to be less than one because not all parcels have sidewalk access
+sum(dest_weights_snapped) / sum(dest_parcels.dest_weight)
 ```
 
 ```{julia}
-land_use_codes = CSV.read(joinpath(DATA_PATH, "data", "parcels", "land_use_weights.csv"), DataFrame)
-parcels = parcels[.!ismissing.(parcels.txt_Land_1), :]
-land_use_codes = land_use_codes[.!ismissing.(land_use_codes.land_use), :]
-leftjoin!(parcels, land_use_codes, on=:txt_Land_1=>:land_use)
+dest_points_unsnapped = @chain begin
+    GeoDataFrames.read(joinpath(DATAAXLE_PATH, "all_point_locations.gpkg"))
+    @subset! .!:snap_to_parcels
+end
+
+dest_points_unsnapped.geom = reproject(dest_points_unsnapped.geom, GFT.EPSG(4326), GFT.EPSG(32119), order=:trad)
+
+metadata!(dest_points_unsnapped, "geometrycolumns", (:geom,))
+
+dest_weights_unsnapped = create_graph_weights(G, dest_points_unsnapped, [:weight], 20)[:, 1]
+
+sum(dest_weights_unsnapped) / sum(dest_points_unsnapped.weight)
 ```
 
 ```{julia}
-parcels.origin_weight = coalesce.(
-    passmissing(convert).(Float64, parcels.origins_per_parcel),
-    parcels.origins_per_acre .* parcels.Acres,
-    0.0
-)
+nbhd_parks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "neighborhood_parks.gpkg"))
+regional_parks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "neighborhood_parks.gpkg"))
+nbhd_parks.weight .= 2.0
+regional_parks.weight .= 2.0
+parks = vcat(nbhd_parks, regional_parks)
+parks.geom = reproject(parks.geom, GFT.EPSG(2264), GFT.EPSG(32119))
+metadata!(parks, "geometrycolumns", (:geom,))
+dest_weights_parks = create_graph_weights(G, parks, [:weight], 20)[:, 1]
+
+sum(dest_weights_parks) / sum(parks.weight)
+```
+
+
+Greenways have points placed along them. We use a much lower snapping tolerance since the points are placed using our source data directly.
+
+```{julia}
+greenway_points = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "greenway_points.gpkg"))
+dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1e-2)
+
+# should be very close to 1
+sum(dest_weights_greenway) / sum(greenway_points.weight)
 ```
 
 ```{julia}
-parcels.destination_weight = coalesce.(
-    passmissing(convert).(Float64, parcels.destinations_per_parcel),
-    parcels.destinations_per_acre .* parcels.Acres,
-    0.0
-)
-```
-
-```{julia}
-weights = create_graph_weights(G, parcels, [:origin_weight, :destination_weight], 20)
+dest_weights = dest_weights_snapped .+ dest_weights_unsnapped .+ dest_weights_parks .+ dest_weights_greenway
 ```
 
 ## Run the core algorithm
@@ -144,7 +168,7 @@ candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
 ## Score the links
 
 ```{julia}
-scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, weights[:, 1], weights[:, 2], 1609 * 2)
+scores = score_links(x -> x < 1609 * 2, candidate_links, matrix, origin_weights, dest_weights, 1609 * 2)
 ```
 
 ## Timing
@@ -183,6 +207,11 @@ links_gis = links_to_gdf(G, candidate_links, scores)
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 
 # Note: link at 443397.71, 166211.30 has zero length reported but 0.26m in GIS. I assume this is because we round the offsets.
+```
+
+```{julia}
+links_gis = links_to_gdf(G, all_candidate_links)
+GeoDataFrames.write(joinpath(DATA_PATH, "data", "all_candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 ```
 
 ```{julia}
