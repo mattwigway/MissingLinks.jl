@@ -4,7 +4,7 @@ import Graphs: Graph, dijkstra_shortest_paths, nv, ne, is_directed, connected_co
     outneighbors, has_edge, has_vertex, vertices
 import LibSpatialIndex: RTree, insert!, intersects
 import GeoInterface, ArchGDAL
-import DataFrames: DataFrame, nrow
+import DataFrames: DataFrame, nrow, metadata
 import LinearAlgebra: norm2
 import Logging: @info, @warn, @error
 import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint

@@ -130,6 +130,46 @@ function add_short_edges!(G, max_edge_length)
     end
 end
 
+"""
+This adds edge(s) representing geom to the graph. It may add multiple edges in cases where
+two edges would otherwise be duplicates because they connect the same intersections (see #2)
+"""
+function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
+    # add to graph
+    startpt = get_first_point(geom)[1:2]
+    endpt = get_last_point(geom)[1:2]
+    frv = find_or_create_vertex!(G, end_node_idx, startpt, tolerance)
+    tov = find_or_create_vertex!(G, end_node_idx, endpt, tolerance)
+
+    # geometry always goes from lower-numbered to higher-numbered node
+    if tov < frv
+        frv, tov = tov, frv
+        geom = reverse(geom)
+    end
+
+    if !haskey(G, frv, tov)
+        G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
+    else
+        # we already have an edge between these vertices. This can happen when the network looks like this:
+        # 
+        #   ________
+        #  /        \
+        # *          *
+        #  \________/
+        # 
+        # break the edge and try again. We say max length 75%; the closest it will
+        # be able to do is to cut evenly in half
+        # Note that this is not 100% correct, because we're introducing a node where
+        # there wasn't one before. If that happens to be very close to a node on a disconnected
+        # segment of the network, those sections of the network will be fused (unlikely). We
+        # attempt to ameliorate the situation by placing the extra node very close to the original node,
+        # but if it is just far enough to be within the tolerance of another node this could be an issue
+        length_m = ArchGDAL.geomlength(geom)
+        offset = min(1e-2, length_m * 0.1)
+        add_geom_to_graph!(G, geom_between(geom, 0, offset), end_node_idx, tolerance)
+        add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)
+    end
+end
 
 """
 This builds a graph from one or more GeoDataFrame layers.
@@ -150,19 +190,7 @@ function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
         for_each_geom(multigeom) do biggeom
             # break_long_line is a no-op on lines shorter than max_edge_length
             for geom in break_long_line(biggeom, max_edge_length)
-                # add to graph
-                startpt = get_first_point(geom)[1:2]
-                endpt = get_last_point(geom)[1:2]
-                frv = find_or_create_vertex!(G, end_node_idx, startpt, tolerance)
-                tov = find_or_create_vertex!(G, end_node_idx, endpt, tolerance)
-
-                # geometry always goes from lower-numbered to higher-numbered node
-                if tov < frv
-                    frv, tov = tov, frv
-                    geom = reverse(geom)
-                end
-
-                G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
+                add_geom_to_graph!(G, geom, end_node_idx, tolerance)
             end
         end
     end

@@ -5,6 +5,7 @@ function gdal_to_geos(gdalgeom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString})
     LibGEOS.LineString(coords)
 end
 
+geom_between(geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, pos1, pos2) = geom_between(gdal_to_geos(geom), pos1, pos2)
 
 function geom_between(geom::LibGEOS.LineString, pos1, pos2)
     pos1 < pos2 || error("pos1 must be less than pos2")
@@ -33,7 +34,7 @@ function geom_between(geom::LibGEOS.LineString, pos1, pos2)
 
     endpt = LibGEOS.interpolate(geom, pos2)
     newcoord = [LibGEOS.getGeomX(endpt), LibGEOS.getGeomY(endpt)]
-    if !(newcoord ≈ coords[end])
+    if !(newcoord ≈ coords[end]) || length(coords) == 1
         push!(coords, newcoord)
     end
 
