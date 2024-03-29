@@ -1,0 +1,75 @@
+---
+title: SNAP
+author: Matt Bhagat-Conway
+---
+
+This reads the SNAP data and extracts non-convenience store locations, and combines it with the Healthy Convenience Stores data.
+
+```{r}
+library(sf)
+library(tidyverse)
+library(RcppTOML)
+
+config = parseTOML(here::here("config.toml"))
+```
+
+```{r}
+snap = read_csv(file.path(config$data_path, "data", "destinations", "Historical SNAP Retailer Locator DATA-20231231.csv")) %>%
+    filter(State == "NC" & County == "MECKLENBURG" & `Store Type` != "Convenience Store" & is.na(`End Date`)) %>%
+    st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)
+```
+
+```{r}
+hcs = read_sf(file.path(config$data_path, "data", "destinations", "healthy_corner_stores.gpkg")) %>% rename(geometry="geom")
+```
+
+## Check for duplicates
+
+I don't expect many since we excluded convenience stores, but check anyhow.
+
+
+```{r}
+dmat_m = st_distance(st_transform(snap, 32119)$geometry, st_transform(hcs, 32119)$geometry)
+
+inds = which(dmat_m < units::as_units(100, "m"), arr.ind=T)
+
+tibble(
+    id_l = snap$`Record ID`[inds[,"row"]],
+    name_l = snap$`Store Name`[inds[,"row"]],
+    name_r = hcs$Name[inds[,"col"]],
+    geom = hcs$geometry[inds[,"col"]]
+)
+```
+
+## Remove duplicates
+
+```{r}
+snap = snap %>%
+    filter(!(`Record ID` %in% c(935446, 1448639, 1196720, 955205, 767748, 1054158, 1342434, 1461532)))
+```
+
+## Combine
+
+```{r}
+snap %>%
+    rename(name="Store Name", type="Store Type") %>%
+    select(name, type) %>%
+    bind_rows(hcs %>%
+        rename(name="Name") %>%
+        select(name) %>%
+        mutate(type="Healthy Corner Store")
+    ) %>%
+    write_sf(file.path(config$data_path, "data", "destinations", "healthy_food.gpkg"))
+```
+
+## Check for duplicates
+
+```{r}
+dmat_m = data %>%
+    st_transform(32119) %>%
+    with(st_distance(geometry, geometry))
+
+diag(dmat_m) = NA
+
+which(dmat_m < units::as_units(20, "m"), arr.ind=T)
+```

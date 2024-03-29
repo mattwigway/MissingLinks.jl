@@ -1,0 +1,41 @@
+---
+title: Greenways
+---
+
+Greenways are handled a little differently since they're linear features. We consider 1km of greenway to be a "medium priority location". We evaluate the total weight of each greenway segment, and then divide the segment into roughly 10m chunks worth roughly 0.02 destinations each (roughly because exact spacing depends on the length of the feature). This way 1km of greenway contains 100 locations worth 2 points total.
+
+```{julia}
+using DataFrames, GeoDataFrames, LibGEOS, TOML, ArchGDAL, GeoInterface
+import MissingLinks: for_each_geom
+import GeoFormatTypes as GFT
+
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+```
+
+```{julia}
+greenways = GeoDataFrames.read(joinpath(CONFIG["data_path"], "RA", "data", "charlotte_shared_use_paths.gpkg"))
+```
+
+```{julia}
+out = []
+
+for mgeom in greenways.geom
+    for_each_geom(mgeom) do geom
+        geosgeom = GeoInterface.convert(LibGEOS, geom)
+        length_m = LibGEOS.geomLength(geosgeom)
+        weight = length_m / 1000
+        n_locs = length_m ÷ 10
+        weight_per_loc = weight / n_locs
+        for loc in 1:n_locs
+            pt = LibGEOS.interpolate(geosgeom, (loc - 1) / n_locs * length_m)
+            push!(out, (weight=weight_per_loc, geometry=GeoInterface.convert(ArchGDAL, pt)))
+        end
+    end
+end
+
+out = DataFrame(out)
+```
+
+```{julia}
+GeoDataFrames.write(joinpath(CONFIG["data_path"], "data", "destinations", "greenway_points.gpkg"), out, crs=GFT.EPSG(32119))
+```

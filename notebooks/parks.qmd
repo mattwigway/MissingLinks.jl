@@ -1,0 +1,43 @@
+---
+title: Parks
+---
+
+Split parks data into community/regional and neighborhood parks.
+
+```{r}
+library(sf)
+library(tidyverse)
+library(RcppTOML)
+
+config = parseTOML(here::here("config.toml"))
+```
+
+```{r}
+data = read_sf(file.path(config$data_path, "data", "destinations", "Park_Property.shp"))
+```
+
+```{r}
+unique(data$PARK_TYPE)
+```
+
+```{r}
+regional = data %>%
+    filter(PARK_TYPE %in% c("REGIONAL PARK", "COMMUNITY PARK", "HISTORIC SITE"))
+
+unique(regional$PARK_TYPE)
+```
+
+```{r}
+write_sf(regional, file.path(config$data_path, "data", "destinations", "regional_parks.gpkg"))
+```
+
+```{r}
+nbhd = data %>%
+    filter(PARK_TYPE %in% c("NEIGHBORHOOD PARK", "NATURE PRESERVE"))
+
+unique(nbhd$PARK_TYPE)
+```
+
+```{r}
+write_sf(nbhd, file.path(config$data_path, "data", "destinations", "neighborhood_parks.gpkg"))
+```

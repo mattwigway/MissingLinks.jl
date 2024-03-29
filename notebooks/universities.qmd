@@ -1,0 +1,45 @@
+---
+title: Colleges and universities
+---
+
+We use the [IPEDS shapefile](https://nces.ed.gov/programs/edge/geographic/schoollocations) and extract schools in Mecklenburg County.
+
+```{r}
+library(sf)
+library(tidyverse)
+library(tigris)
+library(RcppTOML)
+
+config = parseTOML(here::here("config.toml"))
+```
+
+```{r}
+unis = read_sf(file.path(config$data_path, "data", "destinations", "EDGE_GEOCODE_POSTSECSCH_2223.shp")) %>%
+    filter(CNTY == "37119") # just mecklenburg county
+```
+
+Some of these are not actually colleges/universities (e.g. the beauty schools). Merge with [IPEDS directory information](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx?gotoReportId=7&fromIpeds=true&sid=e273376e-ffab-4855-9830-616bd2f03635&rtid=7) and remove any school that does not grant at least associates degrees.
+
+```{r}
+ipeds = read_sf(file.path(config$data_path, "data", "destinations", "hd2022.csv"))
+```
+
+The IPEDS data is for entire institutions while the geocodes are for individual campuses, which have a two digit code appended.
+
+```{r}
+unis = unis %>%
+    mutate(main_unitid = str_sub(UNITID, 1, 6)) %>%
+    left_join(ipeds, by=c("main_unitid"="UNITID"))
+
+stopifnot(!any(is.na(unis$ICLEVEL)))
+```
+
+
+```{r}
+unis = unis %>%
+    filter(ICLEVEL %in% c("1", "2"))
+```
+
+```{r}
+unis %>% write_sf(file.path(config$data_path, "data", "destinations", "colleges.gpkg"))
+```
