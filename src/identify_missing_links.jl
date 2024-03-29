@@ -141,16 +141,25 @@ Compute the network distance between the two points on a candidate link, by comp
 between from ends and adding fractions of the edge.
 """
 function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
-    min(
-        saturated_add(dmat[sfr, dfr], sdist + ddist),
-        saturated_add(dmat[sto, dfr], senddist + ddist),
-        saturated_add(dmat[sfr, dto], sdist + denddist),
-        saturated_add(dmat[sto, dto], senddist + denddist),
-        saturated_add(dmat[dfr, sfr], ddist + sdist),
-        saturated_add(dmat[dto, sfr], denddist + sdist),
-        saturated_add(dmat[dfr, sto], ddist + senddist),
-        saturated_add(dmat[dto, sto], denddist + senddist)
-    )
+    if sfr == dfr && sto == dto
+        # same edge
+        abs(sdist - ddist)
+    elseif sfr == dto && sto == dfr
+        # Links are always supposed to go from lower-numbered vertex to higher-numbered, so
+        # this should not be possible
+        error("One link is reverse of another!")
+    else
+        min(
+            saturated_add(dmat[sfr, dfr], sdist + ddist),
+            saturated_add(dmat[sto, dfr], senddist + ddist),
+            saturated_add(dmat[sfr, dto], sdist + denddist),
+            saturated_add(dmat[sto, dto], senddist + denddist),
+            saturated_add(dmat[dfr, sfr], ddist + sdist),
+            saturated_add(dmat[dto, sfr], denddist + sdist),
+            saturated_add(dmat[dfr, sto], ddist + senddist),
+            saturated_add(dmat[dto, sto], denddist + senddist)
+        )
+    end
 end
 
 """
