@@ -6,7 +6,8 @@ Using a graph and a spatial data frame, assign weights to graph nodes. This work
     - Divide each of the weights by the number of graph edges times two
     - Assign that divided weight to each of the start and end nodes of those edges
 """
-function create_graph_weights(G, gdf, weightcols, distance; geomcol=:geometry)
+function create_graph_weights(G, gdf, weightcols, distance)
+    geomcol = first(metadata(gdf, "geometrycolumns"))
     weights = zeros(Float64, (nv(G), length(weightcols)))
     @info "Indexing graph"
     edgeidx, edges = index_graph_edges(G)
