@@ -19,7 +19,7 @@
 #  4. Repeat with the second node of the new link
 #  5. Sum the results. This is the contribution to access of this link.
 
-saturated_add(x::T, y) where T = first(x) == typemax(T) ? x : x + round(T, y)
+saturated_add(x::T, y) where T = x == typemax(T) ? x : x + round(T, y)
 
 """
 This identifies possible missing links
