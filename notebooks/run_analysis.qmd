@@ -214,10 +214,64 @@ links_gis = links_to_gdf(G, all_candidate_links)
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "all_candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 ```
 
+## Service area example (for NCAMPO slides)
+
+Generate some service areas to better explain the algorithm.
+
+```{julia}
+edge_index = MissingLinks.index_graph_edges(G)
+```
+
+```{julia}
+sources = [
+    (name="North", geom=ArchGDAL.createpoint(444316.0,156853.7), link=1660),
+    (name="South", geom=ArchGDAL.createpoint(444000.5,156368.8), link=1660),
+]
+
+service_areas = DataFrame(Iterators.flatmap(sources) do source
+        [
+            (
+                name=source.name,
+                which="Before",
+                service_area(
+                    source.geom,
+                    G,
+                    matrix,
+                    1609 * 2,
+                    scores=dest_weights,
+                    edge_index=edge_index
+                )...
+            ),
+            (
+                name=source.name,
+                which="After",
+                service_area(
+                    source.geom,
+                    G,
+                    matrix,
+                    1609 * 2,
+                    scores=dest_weights,
+                    edge_index=edge_index,
+                    links=[candidate_links[source.link]]
+                )...
+            )
+        ]
+    end
+)
+
+metadata!(service_areas, "geometrycolumns", (:geom,))
+
+sources = DataFrame(sources)
+metadata!(sources, "geometrycolumns", (:geom,))
+
+GeoDataFrames.write(joinpath(DATA_PATH, "paper", "figures", "service_area_origins.gpkg"), sources, crs=GFT.EPSG(32119))
+GeoDataFrames.write(joinpath(DATA_PATH, "paper", "figures", "service_areas.gpkg"), service_areas, crs=GFT.EPSG(32119))
+```
+
+```{julia}
+
+```
+
 ```{julia}
 close(dfile)
 ```
-
-## Street crossings
-
-Most candidate links appear to be street crossings rather than new links between suburban streets. This is probably because of where the destinations are (along streets that are hard to cross). Here we calculate what percentage of links and access-weighted links cross streets
