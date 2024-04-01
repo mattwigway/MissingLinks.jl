@@ -26,7 +26,6 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 SuiteSparseGraphBLAS = "c2e53296-7b14-11e9-1210-bddfa8111e1d"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
-libpostal_jll = "af819820-d0b8-51fd-9b6f-e7926976c73e"
 
 [compat]
 julia = "1.9"
