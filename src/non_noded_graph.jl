@@ -60,6 +60,9 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
             xygeom = ArchGDAL.createpoint(xy)
             candidates = intersects(index, xy .- snap_tolerance, xy .+ snap_tolerance)
             for candidate in candidates
+                # TODO skip snaps to the same link as the start and end point are from
+                # This should not change outputs as they'll be snapped to the ends already
+                # We aren't currently handling p-shaped streets
                 if ArchGDAL.distance(geoms[candidate], xygeom) ≤ snap_tolerance
                     # It is within the distance, find the closest point on the candidate
                     geosgeom = geos_geoms[candidate]
@@ -74,6 +77,8 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
     geom_breaks = Dict()
 
     for (i, geom) in enumerate(geos_geoms)
+        # we manually insert "breaks" at the start and end to ensure we don't lose the ends of lines
+        # though this should be a no-op at the moment because the ends of lines get snapped to themselves
         geom_breaks[i] = [zero(Float64), LibGEOS.geomLength(geom)]
     end
 
