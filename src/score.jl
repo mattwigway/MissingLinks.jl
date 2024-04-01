@@ -30,14 +30,14 @@ function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weig
     new_access = 0.0
     for origin in eachindex(origin_fr_distances)
         origin_distance = min(
-            saturated_add(origin_fr_distances[origin], link.fr_dist_from_start),
-            saturated_add(origin_to_distances[origin], link.fr_dist_to_end)
+            add_unless_typemax(origin_fr_distances[origin], link.fr_dist_from_start),
+            add_unless_typemax(origin_to_distances[origin], link.fr_dist_to_end)
         )
         if origin_distance ≤ (decay_cutoff_m - link.geographic_length_m)
             for dest in eachindex(dest_fr_distances)
                 dest_distance = min(
-                    saturated_add(dest_fr_distances[dest], link.to_dist_from_start),
-                    saturated_add(dest_to_distances[dest], link.to_dist_to_end)
+                    add_unless_typemax(dest_fr_distances[dest], link.to_dist_from_start),
+                    add_unless_typemax(dest_to_distances[dest], link.to_dist_to_end)
                 )
 
                 if dest_distance ≤ (decay_cutoff_m - link.geographic_length_m)

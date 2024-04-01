@@ -19,7 +19,13 @@
 #  4. Repeat with the second node of the new link
 #  5. Sum the results. This is the contribution to access of this link.
 
-saturated_add(x::T, y) where T = x == typemax(T) ? x : x + round(T, y)
+"""
+Add y to x, but only if x is not already typemax (used to indicate unreachable). This assumes that
+if x < typemax(typeof(T)), x + y < typemax(typeof(T)), which is generally reasonable as x and y are in meters
+and anything we're adding is well less than 65km, unless it's unreachable, which should only be the case for
+x (coming from the distance matrix). However, we do use a checked_add to throw an error if that assumption is violated.
+"""
+add_unless_typemax(x::T, y) where T = x == typemax(T) ? x : Base.Checked.checked_add(x + round(T, y))
 
 """
 This identifies possible missing links
@@ -150,14 +156,14 @@ function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, d
         error("One link is reverse of another!")
     else
         min(
-            saturated_add(dmat[sfr, dfr], sdist + ddist),
-            saturated_add(dmat[sto, dfr], senddist + ddist),
-            saturated_add(dmat[sfr, dto], sdist + denddist),
-            saturated_add(dmat[sto, dto], senddist + denddist),
-            saturated_add(dmat[dfr, sfr], ddist + sdist),
-            saturated_add(dmat[dto, sfr], denddist + sdist),
-            saturated_add(dmat[dfr, sto], ddist + senddist),
-            saturated_add(dmat[dto, sto], denddist + senddist)
+            add_unless_typemax(dmat[sfr, dfr], sdist + ddist),
+            add_unless_typemax(dmat[sto, dfr], senddist + ddist),
+            add_unless_typemax(dmat[sfr, dto], sdist + denddist),
+            add_unless_typemax(dmat[sto, dto], senddist + denddist),
+            add_unless_typemax(dmat[dfr, sfr], ddist + sdist),
+            add_unless_typemax(dmat[dto, sfr], denddist + sdist),
+            add_unless_typemax(dmat[dfr, sto], ddist + senddist),
+            add_unless_typemax(dmat[dto, sto], denddist + senddist)
         )
     end
 end

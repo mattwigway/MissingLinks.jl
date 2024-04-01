@@ -76,8 +76,8 @@ function service_area(origin::ArchGDAL.IGeometry{ArchGDAL.wkbPoint}, G, dmat, th
     tgt = code_for(G, snapped.tgt)
 
     # find distances to all nodes
-    dists_from_src = saturated_add.(dmat[:, src], src_from_origin)
-    dists_from_tgt = saturated_add.(dmat[:, tgt], tgt_from_origin)
+    dists_from_src = add_unless_typemax.(dmat[:, src], src_from_origin)
+    dists_from_tgt = add_unless_typemax.(dmat[:, tgt], tgt_from_origin)
 
     # account for new links
     if !isnothing(links)
@@ -87,13 +87,13 @@ function service_area(origin::ArchGDAL.IGeometry{ArchGDAL.wkbPoint}, G, dmat, th
                     for link in (origlink, reverse(origlink))
                         # shortest distance to start of link
                         dist_to_start_of_link = min(
-                            saturated_add(dists[link.fr_edge_src], link.fr_dist_from_start), # already includes dist from origin
-                            saturated_add(dists[link.fr_edge_tgt], link.fr_dist_to_end) # already includes dist from origin
+                            add_unless_typemax(dists[link.fr_edge_src], link.fr_dist_from_start), # already includes dist from origin
+                            add_unless_typemax(dists[link.fr_edge_tgt], link.fr_dist_to_end) # already includes dist from origin
                         )
 
                         dist_from_end_of_link = min(
-                            saturated_add(dmat[link.to_edge_src, dest], link.to_dist_from_start),
-                            saturated_add(dmat[link.to_edge_tgt, dest], link.to_dist_to_end),
+                            add_unless_typemax(dmat[link.to_edge_src, dest], link.to_dist_from_start),
+                            add_unless_typemax(dmat[link.to_edge_tgt, dest], link.to_dist_to_end),
                         )
 
                         if dist_to_start_of_link < threshold && dist_from_end_of_link < threshold
