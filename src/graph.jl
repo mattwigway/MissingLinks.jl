@@ -153,8 +153,8 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
         length_m = ArchGDAL.geomlength(geom)
         offset = min(1e-2, length_m * 0.1)
         return (
-            add_geom_to_graph!(G, geom_between(geom, 0, offset), end_node_idx, tolerance),
-            add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)
+            add_geom_to_graph!(G, geom_between(geom, 0, offset), end_node_idx, tolerance)...,
+            add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)...
         )
     end
 end
