@@ -2,6 +2,8 @@
 # Store everything in UInt16 meters. with 120k vertices, will "only" take 26 GB RAM - mmap if needed
 # matrix is travel time from origin i to destination j
 
+# Tested in identify_missing_links tests
+
 function fill_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
     size(mtx) == (nv(G), nv(G)) || error("Matrix must be $(nv(G))x$(nv(G))")
 
