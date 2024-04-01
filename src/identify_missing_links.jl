@@ -24,8 +24,12 @@ Add y to x, but only if x is not already typemax (used to indicate unreachable).
 if x < typemax(typeof(T)), x + y < typemax(typeof(T)), which is generally reasonable as x and y are in meters
 and anything we're adding is well less than 65km, unless it's unreachable, which should only be the case for
 x (coming from the distance matrix). However, we do use a checked_add to throw an error if that assumption is violated.
+
+If x == typemax(T), return x
+If x < typemax(T) and x + y <= typemax(T), return x + y
+If x < typemax(T) and x + y > typemax(T), throw OverflowError
 """
-add_unless_typemax(x::T, y) where T = x == typemax(T) ? x : Base.Checked.checked_add(x + round(T, y))
+add_unless_typemax(x::T, y) where T = x == typemax(T) ? x : Base.Checked.checked_add(x, round(T, y))
 
 """
 This identifies possible missing links
