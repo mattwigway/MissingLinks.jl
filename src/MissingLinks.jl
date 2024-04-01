@@ -13,7 +13,7 @@ import LibGEOS
 
 include("graph.jl")
 include("candidate_link.jl")
-include("node_to_node.jl")
+include("dist.jl")
 include("identify_missing_links.jl")
 include("deduplicate_links.jl")
 include("score.jl")

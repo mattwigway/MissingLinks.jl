@@ -147,32 +147,6 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 end
 
 """
-Compute the network distance between the two points on a candidate link, by computing
-between from ends and adding fractions of the edge.
-"""
-function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
-    if sfr == dfr && sto == dto
-        # same edge
-        abs(sdist - ddist)
-    elseif sfr == dto && sto == dfr
-        # Links are always supposed to go from lower-numbered vertex to higher-numbered, so
-        # this should not be possible
-        error("One link is reverse of another!")
-    else
-        min(
-            add_unless_typemax(dmat[sfr, dfr], sdist + ddist),
-            add_unless_typemax(dmat[sto, dfr], senddist + ddist),
-            add_unless_typemax(dmat[sfr, dto], sdist + denddist),
-            add_unless_typemax(dmat[sto, dto], senddist + denddist),
-            add_unless_typemax(dmat[dfr, sfr], ddist + sdist),
-            add_unless_typemax(dmat[dto, sfr], denddist + sdist),
-            add_unless_typemax(dmat[dfr, sto], ddist + senddist),
-            add_unless_typemax(dmat[dto, sto], denddist + senddist)
-        )
-    end
-end
-
-"""
 Convenience function that converts links to a GeoDataFrame
 """
 function links_to_gdf(G, links, scores=ones(length(links)))
