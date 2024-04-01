@@ -17,7 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-            - 1.6
+# don't really need to check older Julia, we control where this package runs
+#            - 1.6
             - 1
         os:
           - ubuntu-latest
