@@ -61,3 +61,21 @@ function break_long_line(line::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, max_l
         return geoms
     end
 end
+
+Base.reverse(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) =
+    ArchGDAL.createlinestring([ArchGDAL.getpoint(g, i) for i in (ArchGDAL.ngeom(g) - 1):-1:0])
+
+"Run the provided function on each constituent geometry of a multigeometry"
+function for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString})
+    for i in 1:ArchGDAL.ngeom(g)
+        # archgdal has zero based indexing
+        f(ArchGDAL.getgeom(g, i - 1))
+    end
+end
+
+for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = f(g)
+
+"get the first point of a line"
+get_first_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, 0)
+# 0 based indexing in GDAL
+get_last_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, ArchGDAL.ngeom(g) - 1)

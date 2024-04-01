@@ -1,26 +1,10 @@
 EdgeData = @NamedTuple{length_m::Float64, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
-# if the geographic distance from two nodes is less than the tolerance, we connect them
-# if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance
+# if the geographic distance from two nodes is less than the snapping tolerance, we connect them
+# if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
+# this is for automated fixing of graph errors, not for missing link identification, which uses a
+# different set of thresholds
 const NODE_CONNECT_FACTOR = 2
-
-Base.reverse(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) =
-    ArchGDAL.createlinestring([ArchGDAL.getpoint(g, i) for i in (ArchGDAL.ngeom(g) - 1):-1:0])
-
-"Run the provided function on each constituent geometry of a multigeometry"
-function for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString})
-    for i in 1:ArchGDAL.ngeom(g)
-        # archgdal has zero based indexing
-        f(ArchGDAL.getgeom(g, i - 1))
-    end
-end
-
-for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = f(g)
-
-"get the first point of a line"
-get_first_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, 0)
-# 0 based indexing in GDAL
-get_last_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, ArchGDAL.ngeom(g) - 1)
 
 # wrap int64, avoid confusion with Int64 Graphs.jl numbers
 struct VertexID
@@ -30,7 +14,7 @@ end
 Base.isless(a::VertexID, b::VertexID) = a.id < b.id
 Base.isequal(a::VertexID, b::VertexID) = a.id == b.id
 
-function find_or_create_vertex!(G, end_node_idx, location, tolerance)
+function find_or_create_vertex!(G, end_node_idx, location::NTuple{2, Float64}, tolerance)
     loc = collect(location) # tuple to vector
     existing = filter(map(x -> label_for(G, x), intersects(end_node_idx, loc .- tolerance, loc .+ tolerance))) do candidate
         # is it closer than the tolerance (l2-norm is euclidean distance)
@@ -38,7 +22,7 @@ function find_or_create_vertex!(G, end_node_idx, location, tolerance)
         norm2(loc .- candidate_loc) ≤ tolerance
     end
 
-    sort!(existing, by=candidate -> norm2(loc .- G[candidate]), order=Base.Order.ReverseOrdering())
+    sort!(existing, by=candidate -> norm2(loc .- G[candidate]))
 
     if isempty(existing)
         # create a new vertex and add it to the index
@@ -132,7 +116,9 @@ end
 
 """
 This adds edge(s) representing geom to the graph. It may add multiple edges in cases where
-two edges would otherwise be duplicates because they connect the same intersections (see #2)
+two edges would otherwise be duplicates because they connect the same intersections (see #2).
+
+Returns a tuple of tuples (frv, tov) - usually just one, but some edges may be split before adding to graph.
 """
 function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
     # add to graph
@@ -149,6 +135,7 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
 
     if !haskey(G, frv, tov)
         G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
+        return ((frv, tov),)
     else
         # we already have an edge between these vertices. This can happen when the network looks like this:
         # 
@@ -157,8 +144,7 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
         # *          *
         #  \________/
         # 
-        # break the edge and try again. We say max length 75%; the closest it will
-        # be able to do is to cut evenly in half
+        # break the edge and try again.
         # Note that this is not 100% correct, because we're introducing a node where
         # there wasn't one before. If that happens to be very close to a node on a disconnected
         # segment of the network, those sections of the network will be fused (unlikely). We
@@ -166,8 +152,10 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
         # but if it is just far enough to be within the tolerance of another node this could be an issue
         length_m = ArchGDAL.geomlength(geom)
         offset = min(1e-2, length_m * 0.1)
-        add_geom_to_graph!(G, geom_between(geom, 0, offset), end_node_idx, tolerance)
-        add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)
+        return (
+            add_geom_to_graph!(G, geom_between(geom, 0, offset), end_node_idx, tolerance),
+            add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)
+        )
     end
 end
 
