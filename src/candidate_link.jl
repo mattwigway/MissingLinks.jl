@@ -2,7 +2,7 @@
 A CandidateLink represents a link between two existing edges. It stores the vertex codes (not labels)
 from each end of each edge, as well as the distances from each vertex at the point where the link is.
 """
-struct CandidateLink{T}
+struct CandidateLink{T<:Real}
     fr_edge_src::Int64
     fr_edge_tgt::Int64
     fr_dist_from_start::T
@@ -14,6 +14,31 @@ struct CandidateLink{T}
     geographic_length_m::T
     network_length_m::T
 end
+
+# constructor with keyword args for clarity in tests. All keywords must be passed, or will TypeError (intentionally)
+CandidateLink(;
+    fr_edge_src=nothing,
+    fr_edge_tgt=nothing,
+    fr_dist_from_start=nothing,
+    fr_dist_to_end=nothing,
+    to_edge_src=nothing,
+    to_edge_tgt=nothing,
+    to_dist_from_start=nothing,
+    to_dist_to_end=nothing,
+    geographic_length_m=nothing,
+    network_length_m=nothing
+) = CandidateLink(
+        fr_edge_src,
+        fr_edge_tgt,
+        fr_dist_from_start,
+        fr_dist_to_end,
+        to_edge_src,
+        to_edge_tgt,
+        to_dist_from_start,
+        to_dist_to_end,
+        geographic_length_m,
+        network_length_m
+    )
 
 
 """

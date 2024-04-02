@@ -60,6 +60,7 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
         # find other edges whose bounding boxes intersect the source_edge edge bounding box
         # expanded by the max_link_dist
         candidates = map(
+            # optimization - could discard edges that have already been used as a source
             x -> edges[x],
             intersects(sidx,
                 [source_edge_envelope.MinX, source_edge_envelope.MinY] .- max_link_dist,
