@@ -79,6 +79,74 @@
         @test dedupe[2] === links[3]
     end
 
+    @testset "Does not always return first link" begin
+        # we add another link that's even shorter to the first sphere of influence, and make sure it is the
+        # one that gets retained.
+        links = [
+            CandidateLink(
+                fr_edge_src=1,
+                fr_edge_tgt=2,
+                fr_dist_from_start=UInt16(25),
+                fr_dist_to_end=UInt16(25),
+                to_edge_src=5,
+                to_edge_tgt=6,
+                to_dist_from_start=UInt16(25),
+                to_dist_to_end=UInt16(25),
+                geographic_length_m=UInt16(9),
+                network_length_m=typemax(UInt16)
+            ),
+
+            CandidateLink(
+                fr_edge_src=2,
+                fr_edge_tgt=3,
+                fr_dist_from_start=UInt16(25),
+                fr_dist_to_end=UInt16(25),
+                to_edge_src=6,
+                to_edge_tgt=8,
+                to_dist_from_start=UInt16(25),
+                to_dist_to_end=UInt16(25),
+                geographic_length_m=UInt16(10), #longer
+                network_length_m=typemax(UInt16)
+            ),
+
+            CandidateLink(
+                fr_edge_src=1,
+                fr_edge_tgt=2,
+                fr_dist_from_start=UInt16(25),
+                fr_dist_to_end=UInt16(25),
+                to_edge_src=6,
+                to_edge_tgt=8,
+                to_dist_from_start=UInt16(25),
+                to_dist_to_end=UInt16(25),
+                geographic_length_m=UInt16(8), # shortest of this SOI
+                network_length_m=typemax(UInt16)
+            ),
+
+            # this one is not a dupe
+            CandidateLink(
+                fr_edge_src=3,
+                fr_edge_tgt=4,
+                fr_dist_from_start=UInt16(0), # start is in previous SOI
+                fr_dist_to_end=UInt16(200),
+                to_edge_src=7,
+                to_edge_tgt=8,
+                to_dist_from_start=UInt16(0), # end is not, because link is backwards
+                to_dist_to_end=UInt16(200),
+                geographic_length_m=UInt16(10),
+                network_length_m=typemax(UInt16)
+            )
+        ]
+
+        # we will always find the backwards versions as well
+        links = [links..., reverse.(links)...]
+
+        dedupe = deduplicate_links(links, dmat, 100)
+
+        @test length(dedupe) == 2
+        @test dedupe[1] === links[3]
+        @test dedupe[2] === links[4]
+    end
+
     @testset "Connections to same edges" begin
         links = [
             # both of these originate on 34, one goes to 56, the other to 68,
