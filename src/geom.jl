@@ -8,7 +8,7 @@ end
 geom_between(geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, pos1, pos2) = geom_between(gdal_to_geos(geom), pos1, pos2)
 
 function geom_between(geom::LibGEOS.LineString, pos1, pos2)
-    pos1 < pos2 || error("pos1 must be less than pos2")
+    pos1 < pos2 || error("pos1 ($pos1) must be less than pos2 ($pos2), total length $(LibGEOS.geomLength(geom))")
     startpt = LibGEOS.interpolate(geom, pos1)
 
     coords = [[LibGEOS.getGeomX(startpt), LibGEOS.getGeomY(startpt)]]
