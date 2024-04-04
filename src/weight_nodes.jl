@@ -34,7 +34,11 @@ function create_graph_weights(G, gdf, weightcols, distance)
         end
 
         for (i, weightcol) in enumerate(weightcols)
-            weights[nodes, i] .+= row[weightcol] / length(nodes)
+            # can't use .+= here as there may (often) be duplicate nodes when
+            # there are multiple close-by edges. x[[1, 1]] .+= 2 only adds two once.
+            for node in nodes
+                weights[node, i] += row[weightcol] / length(nodes)
+            end
         end
     end
 
