@@ -143,7 +143,6 @@ dest_weights = dest_weights_snapped .+ dest_weights_unsnapped .+ dest_weights_pa
 algorithm_start = now()
 dfile = open("distances.bin", "w+")
 matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
-fill!(matrix, zero(UInt16));
 ```
 
 Do the routing
@@ -202,8 +201,23 @@ median(scores)
 mean(scores)
 ```
 
+
+## Investigate how a different cutoff changes results
+
+### Different cutoffs
+
 ```{julia}
-links_gis = links_to_gdf(G, candidate_links, scores)
+scores_1mi = score_links(x -> x < 1609, candidate_links, matrix, origin_weights, dest_weights, 1609)
+scores_3mi = score_links(x -> x < 1609 * 3, candidate_links, matrix, origin_weights, dest_weights, 1609 * 3)
+```
+
+### Gravity function
+
+```{julia}
+links_gis = links_to_gdf(G, candidate_links)
+links_gis.score_1mi = scores_1mi
+links_gis.score_2mi = scores
+links_gis.score_3mi = scores_3mi
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 
 # Note: link at 443397.71, 166211.30 has zero length reported but 0.26m in GIS. I assume this is because we round the offsets.
@@ -213,6 +227,7 @@ GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"),
 links_gis = links_to_gdf(G, all_candidate_links)
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "all_candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 ```
+
 
 ## Service area example (for NCAMPO slides)
 

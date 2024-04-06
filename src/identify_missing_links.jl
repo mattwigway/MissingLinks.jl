@@ -150,7 +150,7 @@ end
 """
 Convenience function that converts links to a GeoDataFrame
 """
-function links_to_gdf(G, links, scores=ones(length(links)))
+function links_to_gdf(G, links)
     gdf = DataFrame(links)
 
     gdf.network_length_m = ifelse.(
@@ -158,8 +158,6 @@ function links_to_gdf(G, links, scores=ones(length(links)))
         convert.(Float64, gdf.network_length_m),
         Inf64
     )
-
-    gdf.score = scores
 
     # add geometry
     gdf.geometry = map(links) do link
