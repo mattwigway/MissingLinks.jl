@@ -42,7 +42,7 @@ function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weig
 
                 if dest_distance ≤ (decay_cutoff_m - link.geographic_length_m)
                     new_dist = origin_distance + link.geographic_length_m + dest_distance
-                    old_dist = dmat[origin, dest]
+                    old_dist = dmat[dest, origin]
                     if (new_dist < old_dist)
                         # only affects access if it makes the trip shorter
                         Δdecayed = decay_function(new_dist) - decay_function(old_dist)
