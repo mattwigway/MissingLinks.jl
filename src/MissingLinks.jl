@@ -10,6 +10,7 @@ import Logging: @info, @warn, @error
 import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint
 import ThreadsX
 import LibGEOS
+import SuiteSparseGraphBLAS: GBMatrixR
 
 include("graph.jl")
 include("candidate_link.jl")

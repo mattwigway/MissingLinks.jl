@@ -19,11 +19,40 @@ function fill_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) 
     end
 end
 
+function compute_distance_matrix(G; maxdist=5000, valuetype=UInt16)
+    @info "Routing with $(Threads.nthreads()) threads"
+
+    # We are using a GBMatrixR here, so that the array can be constructed efficiently and still
+    # indexed using matrix[origin, destination] instead of the less intuitive matrix[destination, origin]
+    mx = GBMatrixR{valuetype, valuetype}(nv(G), nv(G); fill=typemax(valuetype))
+
+    # I am assuming GBMatrixR is not thread safe when writing to it, but we still want to route with threads
+    lk = ReentrantLock()
+
+    ThreadsX.mapi(1:nv(G)) do origin
+        if origin % 1000 == 0
+            @info "Processed $origin / $(nv(G)) trips"
+        end
+        
+        paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
+
+        lock(lk) do
+            for (dest, val) in pairs(paths.dists)
+                if val < typemax(valuetype)      
+                    mx[origin, dest] = round(valuetype, val)
+                end
+            end
+        end
+    end
+
+    return mx
+end
+
 """
 Compute the network distance between the two points on links, by computing
 between from ends and adding fractions of the edge.
 """
-function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
+function compute_net_distance(dmat::AbstractMatrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
     if sfr == dfr && sto == dto
         # same edge
         abs(sdist - ddist)

@@ -21,13 +21,14 @@ within a threshold distance). We do this in several steps:
  5. Sum the results
 """
 function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
-    # note: assumes undirected graph
+    # Performance optimization
     origin_fr_distances = @view dmat[:, link.fr_edge_src]
     origin_to_distances = @view dmat[:, link.fr_edge_tgt]
-    dest_fr_distances = @view dmat[:, link.to_edge_src]
-    dest_to_distances = @view dmat[:, link.to_edge_tgt]
+    dest_fr_distances = @view dmat[link.to_edge_src, :]
+    dest_to_distances = @view dmat[link.to_edge_tgt, :]
 
     new_access = 0.0
+    # could flip this loop so we loop over destinations first, and thus access the GBMatrix in row-order
     for origin in eachindex(origin_fr_distances)
         origin_distance = min(
             add_unless_typemax(origin_fr_distances[origin], link.fr_dist_from_start),
@@ -42,6 +43,7 @@ function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weig
 
                 if dest_distance ≤ (decay_cutoff_m - link.geographic_length_m)
                     new_dist = origin_distance + link.geographic_length_m + dest_distance
+                    # For construction performance, the array is i
                     old_dist = dmat[dest, origin]
                     if (new_dist < old_dist)
                         # only affects access if it makes the trip shorter

@@ -34,7 +34,7 @@ add_unless_typemax(x::T, y) where T = x == typemax(T) ? x : Base.Checked.checked
 """
 This identifies possible missing links
 """
-function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
+function identify_potential_missing_links(G, dmat::AbstractMatrix{T}, max_link_dist, min_net_dist) where T
     @info "Indexing graph"
     sidx, edges = index_graph_edges(G)
 

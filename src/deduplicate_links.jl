@@ -97,13 +97,13 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
 
         if !in_soi
             # not in a sphere of influence, create one - everything near either end
-            nodes = unique(vcat(
-                findall(dmat[:, link.fr_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.fr_edge_tgt] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_tgt] .< sphere_of_influence_radius)
-            ))
-
+            nodes = filter(axes(dmat, 1)) do node
+                dmat[node, link.fr_edge_src] < sphere_of_influence_radius ||
+                dmat[node, link.fr_edge_tgt] < sphere_of_influence_radius ||
+                dmat[node, link.to_edge_src] < sphere_of_influence_radius ||
+                dmat[node, link.fr_edge_tgt] < sphere_of_influence_radius
+            end
+            
             push!(spheres_of_influence, SphereOfInfluence(nodes, link, [link]))
         end
     end
