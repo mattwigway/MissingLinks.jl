@@ -26,7 +26,9 @@ between from ends and adding fractions of the edge.
 function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
     if sfr == dfr && sto == dto
         # same edge
-        abs(sdist - ddist)
+        # NB: we could remove the base.checked_sub here if perf is poor, as this should never overflow, this is a
+        # belt-and-suspenders solution for #7
+        sdist > ddist ? Base.checked_sub(sdist, ddist) : Base.checked_sub(ddist, sdist)
     elseif sfr == dto && sto == dfr
         # Links are always supposed to go from lower-numbered vertex to higher-numbered, so
         # this should not be possible
