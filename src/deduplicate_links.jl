@@ -6,6 +6,8 @@ mutable struct SphereOfInfluence
 end
 
 """
+deduplicate_links(list, distance_matrix, sphere_of_influence_radius)
+
 This is a heuristic function to deduplicate links. Consider the situation below. Lines are existing
 roads. Here, you have the ends of two blocks in different subdivisions, that do not connect.
 
@@ -50,12 +52,27 @@ existing sphere of influence, we define a new sphere of influence based on the l
 We then return the link with the shortest geographic distance from each sphere of influence. Note
 that there may still be links that are close to one another; if two links define adjacent or even
 overlapping spheres of influence, but with neither link in either sphere of influence, the best
-links in the two spehres of influence may be very similar ones in between the original two links. If
-this were bothersome, one could iterate the algorithm, but we do not since this is purely intended
-to increase performance and we assume the humans operating the algorithm will not choose to build
-largely duplicative links.
+links in the two spheres of influence may be very similar ones in between the original two links.
+For this reason, we run the algorithm iteratively until subsequent deduplications do not reduce the
+number of links.
 """
 function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
+    iter = 1
+    while true
+        orig_len = length(links)
+        links = deduplicate_links_once(links, dmat, sphere_of_influence_radius)
+        new_len = length(links)
+
+        if new_len < orig_len
+            @info "Iteration $iter reduced number of links from $orig_len to $new_len"
+        else
+            @info "Iteration $iter did not reduce number of links"
+            return links
+        end
+    end
+end
+
+function deduplicate_links_once(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
 
     spheres_of_influence = SphereOfInfluence[]
     
@@ -117,7 +134,6 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
             end
         end
 
-        return best
+        return (best, soi)
     end
 end
-
