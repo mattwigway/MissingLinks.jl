@@ -134,6 +134,6 @@ function deduplicate_links_once(links::AbstractVector{<:CandidateLink{<:Any}}, d
             end
         end
 
-        return (best, soi)
+        return best
     end
 end
