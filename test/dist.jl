@@ -38,17 +38,17 @@
     ]
 
     # from 2 meters down 1->2 to two meters down 3->4 - 2 meters each end to access node, plus d[2, 3]
-    @test compute_net_distance(dmat, 1, 2, 2, 4, 3, 4, 2, 4) == 2 + 4 + 2
+    @test compute_net_distance(dmat, 1, 2, UInt16(2), UInt16(4), 3, 4, UInt16(2), UInt16(4)) == UInt16(2 + 4 + 2)
 
     # adjacent edges - two meters down 1->2 to three meters down 1->3 = 2 + 3
-    @test compute_net_distance(dmat, 1, 2, 2, 4, 1, 3, 3, 1) == 2 + 3
+    @test compute_net_distance(dmat, 1, 2, UInt16(2), UInt16(4), 1, 3, UInt16(3), UInt16(1)) == UInt16(2 + 3)
 
     # same edge
-    @test compute_net_distance(dmat, 1, 2, 2, 4, 1, 2, 3, 3) == 1
+    @test compute_net_distance(dmat, 1, 2, UInt16(2), UInt16(4), 1, 2, UInt16(3), UInt16(3)) == UInt16(1)
 
     # and backwards
-    @test compute_net_distance(dmat, 1, 2, 3, 3, 1, 2, 2, 4) == 1
+    @test compute_net_distance(dmat, 1, 2, UInt16(3), UInt16(3), 1, 2, UInt16(2), UInt16(4)) == UInt16(1)
 
     # disconnected
-    @test compute_net_distance(dmat, 1, 2, 2, 4, 5, 6, 2, 4) == U
+    @test compute_net_distance(dmat, 1, 2, UInt16(2), UInt16(4), 5, 6, UInt16(2), UInt16(4)) == U
 end
