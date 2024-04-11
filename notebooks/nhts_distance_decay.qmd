@@ -1,0 +1,64 @@
+---
+title: Distance decay
+---
+
+Here we estimate the distance decay function for walking from the 2017 NHTS, limited to NC.
+
+```{julia}
+using DataFrames, CSV, StatsBase, DataFramesMeta, Gadfly
+import TOML, Cairo, Fontconfig
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+DATA_PATH = CONFIG["data_path"]
+```
+
+```{julia}
+nhts_tr = CSV.read(joinpath(DATA_PATH, "data", "nhts17", "trippub.csv"), DataFrame)
+nhts_hh = CSV.read(joinpath(DATA_PATH, "data", "nhts17", "hhpub.csv"), DataFrame)
+```
+
+```{julia}
+nc_walk = @chain nhts_tr begin
+    @subset! :HHSTATE .== "NC" .&& :TRPTRANS .== 1 .&& :LOOP_TRIP .== 2
+end
+```
+
+Calculate the median
+
+```{julia}
+median_walk_meters = median(nc_walk.TRPMILES .* 1609, StatsBase.weights(nc_walk.WTTRDFIN))
+```
+
+Calculate the beta value
+
+```{julia}
+β = log(0.5) / median_walk_meters
+```
+
+Plot the distance decay
+
+```{julia}
+xs = 0:1:6000
+ys = exp.(β .* xs)
+
+df = DataFrame(:Miles=>xs ./ 1609, :Value => ys)
+
+p = plot(df, x=:Miles, y=:Value, Geom.line)
+draw(PNG(joinpath(DATA_PATH, "paper", "figures", "distance_decay.png"), 4inch, 3inch, dpi=300), p)
+p
+```
+
+## Find where a destination is worth 1% of the total value
+
+```{julia}
+log(0.01) / β
+```
+
+## Store the beta so it can be re-read with no rounding error
+
+This literally writes the eight bytes of the Float64 out to a file—no headers, etc.
+
+```{julia}
+open(joinpath(DATA_PATH, "beta.float64"), "w") do betafile
+    write(betafile, β)
+end
+```

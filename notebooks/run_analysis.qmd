@@ -214,10 +214,25 @@ scores_3mi = score_links(x -> x < 1609 * 3, candidate_links, matrix, origin_weig
 ### Gravity function
 
 ```{julia}
+const β = open(x -> read(x, Float64), joinpath(DATA_PATH, "beta.float64"))
+```
+
+```{julia}
+decayfunc(x) = x > 5250 ? 0.0 : exp(β*x)
+scores_negexp = score_links(decayfunc, candidate_links, matrix, origin_weights, dest_weights, 5250)
+```
+
+```{julia}
 links_gis = links_to_gdf(G, candidate_links)
 links_gis.score_1mi = scores_1mi
 links_gis.score_2mi = scores
 links_gis.score_3mi = scores_3mi
+links_gis.score_negexp = scores_negexp
+links_gis.rank_1mi = competerank(scores_1mi, rev=true)
+links_gis.rank_2mi = competerank(scores, rev=true)
+links_gis.rank_3mi = competerank(scores_3mi, rev=true)
+links_gis.rank_negexp = competerank(scores_negexp, rev=true)
+
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 
 # Note: link at 443397.71, 166211.30 has zero length reported but 0.26m in GIS. I assume this is because we round the offsets.
