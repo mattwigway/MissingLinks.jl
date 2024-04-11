@@ -65,6 +65,7 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
 
         if new_len < orig_len
             @info "Iteration $iter reduced number of links from $orig_len to $new_len"
+            iter += 1
         else
             @info "Iteration $iter did not reduce number of links"
             return links
