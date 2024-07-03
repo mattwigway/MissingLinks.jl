@@ -66,16 +66,23 @@ Base.reverse(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) =
     ArchGDAL.createlinestring([ArchGDAL.getpoint(g, i) for i in (ArchGDAL.ngeom(g) - 1):-1:0])
 
 "Run the provided function on each constituent geometry of a multigeometry"
-function for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString})
+function for_each_geom(f, g::Union{
+        ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString},
+        ArchGDAL.IGeometry{ArchGDAL.wkbMultiLineString25D},
+        ArchGDAL.IGeometry{ArchGDAL.wkbMultiPoint},
+        ArchGDAL.IGeometry{ArchGDAL.wkbMultiPoint25D},
+        ArchGDAL.IGeometry{ArchGDAL.wkbGeometryCollection},
+        ArchGDAL.IGeometry{ArchGDAL.wkbGeometryCollection25D}
+    })
     for i in 1:ArchGDAL.ngeom(g)
         # archgdal has zero based indexing
         f(ArchGDAL.getgeom(g, i - 1))
     end
 end
 
-for_each_geom(f, g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = f(g)
+for_each_geom(f, g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString25D}, ArchGDAL.IGeometry{ArchGDAL.wkbPoint}, ArchGDAL.IGeometry{ArchGDAL.wkbPoint25D}}) = f(g)
 
 "get the first point of a line"
-get_first_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, 0)
+get_first_point(g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString25D}}) = ArchGDAL.getpoint(g, 0)
 # 0 based indexing in GDAL
-get_last_point(g::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}) = ArchGDAL.getpoint(g, ArchGDAL.ngeom(g) - 1)
+get_last_point(g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString25D}}) = ArchGDAL.getpoint(g, ArchGDAL.ngeom(g) - 1)

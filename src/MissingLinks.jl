@@ -4,12 +4,13 @@ import Graphs: Graph, dijkstra_shortest_paths, nv, ne, is_directed, connected_co
     outneighbors, has_edge, has_vertex, vertices, edges
 import LibSpatialIndex: RTree, insert!, intersects
 import GeoInterface, ArchGDAL
-import DataFrames: DataFrame, nrow, metadata
+import DataFrames: DataFrame, nrow, metadata, metadata!
 import LinearAlgebra: norm2
 import Logging: @info, @warn, @error
 import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint
 import ThreadsX
 import LibGEOS
+import Graphs
 
 include("graph.jl")
 include("candidate_link.jl")
@@ -21,6 +22,7 @@ include("weight_nodes.jl")
 include("non_noded_graph.jl")
 include("geom.jl")
 include("service_area.jl")
+include("graph_troubleshooting.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, links_to_gdf, remove_tiny_islands, deduplicate_links,
