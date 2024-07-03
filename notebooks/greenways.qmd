@@ -13,7 +13,8 @@ CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 ```
 
 ```{julia}
-greenways = GeoDataFrames.read(joinpath(CONFIG["data_path"], "RA", "data", "charlotte_shared_use_paths.gpkg"))
+greenways = GeoDataFrames.read(joinpath(CONFIG["data_path"], "data", "network", "greenways_new_split.gpkg"))
+greenways = greenways[.!ismissing.(greenways.geom), :]
 ```
 
 ```{julia}

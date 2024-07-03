@@ -7,7 +7,7 @@ author: Matt Bhagat-Conway
 using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL,
     MetaGraphsNext, CSV, Gadfly, StatsBase, DataFramesMeta
 import Humanize: digitsep
-import Cairo, Fontconfig # gadfly -> png
+import Cairo, Fontconfig, GDAL
 import TOML
 import GeoFormatTypes as GFT
 import Dates: now
@@ -21,10 +21,23 @@ DATAAXLE_PATH = CONFIG["dataaxle_path"]
 We currently have three data files we're working with: sidewalks, shared-use paths, and crosswalks.
 
 ```{julia}
+# work around https://github.com/yeesian/ArchGDAL.jl/issues/333
+function flattento2d_chtype!(geom)
+    # keep geom in scope so it doesn't get destroyed before we're ready
+    # atm this shouldn't happen as flattento2d! returns its argument, but if #333 is fixed
+    # we don't want to rely on implementation details.
+    new_geom = ArchGDAL.flattento2d!(geom)
+    return ArchGDAL.IGeometry(GDAL.ogr_g_clone(new_geom.ptr))
+end
+```
+
+```{julia}
 # TODO clean up these paths
-sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_sidewalks_mwbc.gpkg"))
-paths = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_shared_use_paths_mwbc.gpkg"))
-crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "charlotte_crosswalks_split_mwbc.gpkg"))
+sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "sidewalks_split_mwbc.gpkg"))
+paths = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "greenways_new_split.gpkg"))
+paths = paths[.!ismissing.(paths.geom), :]
+paths.geom = flattento2d_chtype!.(paths.geom)
+crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "crosswalks_split_mwbc.gpkg"))
 
 # there are some new crosswalks since the 2019 Mecklenburg imagery. Including all of them is not
 # practical. However, ones that are identified as priority links are included in this file.
