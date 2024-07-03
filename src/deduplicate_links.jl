@@ -57,24 +57,6 @@ For this reason, we run the algorithm iteratively until subsequent deduplication
 number of links.
 """
 function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
-    iter = 1
-    while true
-        orig_len = length(links)
-        links = deduplicate_links_once(links, dmat, sphere_of_influence_radius)
-        new_len = length(links)
-
-        if new_len < orig_len
-            @info "Iteration $iter reduced number of links from $orig_len to $new_len"
-            iter += 1
-        else
-            @info "Iteration $iter did not reduce number of links"
-            return links
-        end
-    end
-end
-
-function deduplicate_links_once(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
-
     spheres_of_influence = SphereOfInfluence[]
     
     for link in links
