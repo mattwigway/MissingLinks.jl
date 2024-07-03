@@ -95,6 +95,68 @@ function Base.iterate(d::DistanceIterator, idx)
 end
 
 """
+    CombinedDistanceIterator(iter1, dist1, iter2, dist2)
+
+This combines two distance iterators into a single distance iterator, used when iterating
+over distances to both ends of a source/target edge. It efficiently yields tuples of
+(node, distance) where node is a node reachable in either iter1 or iter2, and distance
+is the minimum distance to that node, i.e. (min(dist from iter1 + dist1, dist from iter2 + dist2)).
+"""
+struct CombinedDistanceIterator{T}
+    iter1::DistanceIterator{T}
+    dist1::T
+    iter2::DistanceIterator{T}
+    dist2::T
+end
+
+# Start out at the start of both 
+Base.iterate(d::CombinedDistanceIterator) = Base.iterate(d, (d.iter1.first_index, d.iter2.first_index))
+
+function Base.iterate(d::CombinedDistanceIterator, state)
+    local newloc1, node1, dist1, res1, newloc2, node2, dist2, res2
+    loc1, loc2 = state
+    
+    res1 = iterate(d.iter1, loc1)
+    if !isnothing(res1)
+        newloc1 = res1[2]
+        node1, dist1 = res1[1]
+        dist1 = add_unless_typemax(dist1, d.dist1)
+    end
+
+    res2 = iterate(d.iter2, loc2)
+    if !isnothing(res2)
+        newloc2 = res2[2]
+        node2, dist2 = res2[1]
+        dist2 = add_unless_typemax(dist2, d.dist2)
+    end
+
+    if isnothing(res1) && isnothing(res2)
+        # both iterators have run out
+        return nothing
+    elseif isnothing(res1)
+        # iterator 1 has run out, increment iter2
+        return ((node2, dist2), (loc1, newloc2))
+    elseif isnothing(res2)
+        # iterator 2 has run out, increment iter1
+        return ((node1, dist1), (newloc1, loc2))
+    elseif node1 == node2
+        # The node is in both iterators
+        # increment both
+        return ((node1, min(dist1, dist2)), (newloc1, newloc2))
+    elseif node1 < node2
+        # the next node should come from iterator 1, iterator 2 is already past this point and didn't have it
+        # increment iter1, don't increment iter2
+        return ((node1, dist1), (newloc1, loc2))
+    elseif node2 < node1
+        # the next node should come from iterator 2, iterator 1 is already past this point and didn't have it
+        # increment iter2, don't increment iter1
+        return ((node2, dist2), (loc1, newloc2))
+    else
+        error("Inconsistent state in CombinedDistanceIterator; this is bug. Report at https://github.com/mattwigway/MissingLinks.jl/issues")
+    end
+end
+
+"""
     margin(distances, origin=n)
 
 or

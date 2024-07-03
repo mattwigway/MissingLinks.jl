@@ -1,5 +1,9 @@
 # This file contains code to score the missing links
 
+
+
+
+
 """
 Score potential missing links
 
@@ -21,25 +25,15 @@ within a threshold distance). We do this in several steps:
  5. Sum the results
 """
 function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
-    # note: assumes undirected graph
-    origin_fr_distances = @view dmat[:, link.fr_edge_src]
-    origin_to_distances = @view dmat[:, link.fr_edge_tgt]
-    dest_fr_distances = @view dmat[:, link.to_edge_src]
-    dest_to_distances = @view dmat[:, link.to_edge_tgt]
+    origin_fr_distances = margin(dmat, destination=link.fr_edge_src)
+    origin_to_distances = margin(dmat, destination=link.fr_edge_tgt)
+    dest_fr_distances = margin(dmat, origin=link.to_edge_src)
+    dest_to_distances = margin(dmat, origin=link.to_edge_tgt)
 
     new_access = 0.0
-    for origin in eachindex(origin_fr_distances)
-        origin_distance = min(
-            add_unless_typemax(origin_fr_distances[origin], link.fr_dist_from_start),
-            add_unless_typemax(origin_to_distances[origin], link.fr_dist_to_end)
-        )
+    for (origin, origin_distance) in CombinedDistanceIterator(origin_fr_distances, link.fr_dist_from_start, origin_to_distances, link.fr_dist_to_end)
         if origin_distance ≤ (decay_cutoff_m - link.geographic_length_m)
-            for dest in eachindex(dest_fr_distances)
-                dest_distance = min(
-                    add_unless_typemax(dest_fr_distances[dest], link.to_dist_from_start),
-                    add_unless_typemax(dest_to_distances[dest], link.to_dist_to_end)
-                )
-
+            for (dest, dest_distance) in CombinedDistanceIterator(dest_fr_distances, link.to_dist_from_start, dest_to_distances, link.to_dist_to_end)
                 if dest_distance ≤ (decay_cutoff_m - link.geographic_length_m)
                     new_dist = origin_distance + link.geographic_length_m + dest_distance
                     old_dist = dmat[dest, origin]
