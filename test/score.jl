@@ -1,5 +1,5 @@
 @testitem "Scoring" begin
-    import MissingLinks: graph_from_gdal, score_links, CandidateLink, fill_matrix!
+    import MissingLinks: graph_from_gdal, score_links, CandidateLink, create_matrix
     import DataFrames: DataFrame
     import ArchGDAL as AG
     import Graphs: nv
@@ -16,8 +16,8 @@
             AG.createlinestring([[2.0, 0.0], [2.0, 1.0]])
         ]))
 
-        dmat = zeros(UInt16, nv(G), nv(G))
-        fill_matrix!(G, dmat)
+        
+        dmat = create_matrix(G, UInt16)
 
         links = [
             CandidateLink(
@@ -86,8 +86,8 @@
             AG.createlinestring([[1000.0, 0.0], [1000.0, 500.0]]) # 36
         ]); max_edge_length=50_000)
 
-        dmat = zeros(UInt16, nv(G), nv(G))
-        fill_matrix!(G, dmat)
+        
+        dmat = create_matrix(G, UInt16)
 
         links = [
             CandidateLink(
@@ -152,8 +152,7 @@
             AG.createlinestring([[1064.0, 96.0], [1032.0, 64.0], [1064.0, 0.0]]) # 75 coded backwards
         ]), max_edge_length=50_000)
 
-        dmat = zeros(UInt16, nv(G), nv(G))
-        fill_matrix!(G, dmat)
+        dmat = create_matrix(G, UInt16)
 
         links = [
             CandidateLink(

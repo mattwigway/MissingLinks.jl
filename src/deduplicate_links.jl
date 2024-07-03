@@ -96,12 +96,13 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
         end
 
         if !in_soi
-            # not in a sphere of influence, create one - everything near either end
+            # not in a sphere of influence, create one - everything near either end, in the direction of travel on the link
+            # TODO think about how this would work with directed graphs - because we're implicitly assuming you can walk both ways
             nodes = unique(vcat(
-                findall(dmat[:, link.fr_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.fr_edge_tgt] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_tgt] .< sphere_of_influence_radius)
+                [node for (node, dist) in margin(dmat, destination=link.fr_edge_src) if dist .< sphere_of_influence_radius],
+                [node for (node, dist) in margin(dmat, destination=link.fr_edge_tgt) if dist .< sphere_of_influence_radius],
+                [node for (node, dist) in margin(dmat, origin=link.to_edge_src) if dist .< sphere_of_influence_radius],
+                [node for (node, dist) in margin(dmat, origin=link.to_edge_tgt) if dist .< sphere_of_influence_radius]
             ))
 
             push!(spheres_of_influence, SphereOfInfluence(nodes, link, [link]))
