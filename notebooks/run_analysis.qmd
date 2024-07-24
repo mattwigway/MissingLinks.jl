@@ -11,7 +11,8 @@ import Cairo, Fontconfig, GDAL
 import TOML
 import GeoFormatTypes as GFT
 import Dates: now
-CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+import DrWatson: projectdir
+CONFIG = TOML.parsefile(projectdir("config.toml"))
 DATA_PATH = CONFIG["data_path"]
 DATAAXLE_PATH = CONFIG["dataaxle_path"]
 ```
@@ -154,14 +155,12 @@ dest_weights = dest_weights_snapped .+ dest_weights_unsnapped .+ dest_weights_pa
 
 ```{julia}
 algorithm_start = now()
-dfile = open("distances.bin", "w+")
-matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
 ```
 
 Do the routing
 
 ```{julia}
-MissingLinks.fill_matrix!(G, matrix)
+matrix = create_matrix(G, UInt16, origins=1:10000)
 ```
 
 Find candidate missing links (places where network distance >> geographic distance)
