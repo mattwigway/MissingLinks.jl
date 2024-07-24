@@ -1,4 +1,6 @@
 /Manifest.toml
 /config.toml
-*.gpkg
-distances.bin
+*.gpkg*
+*.bin
+*.raw
+*.by_origin
