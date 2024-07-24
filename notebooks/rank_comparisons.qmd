@@ -1,0 +1,39 @@
+---
+title: Rank comparisons
+---
+
+How sensitive is the ranking of the links to different cutoffs and distance-decay functions?
+
+```{julia}
+using GeoDataFrames, StatsBase, DataFrames
+import TOML
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+DATA_PATH = CONFIG["data_path"]
+```
+
+```{julia}
+data = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"))
+```
+
+```{julia}
+cols = ["score_1mi", "score_2mi", "score_3mi", "score_negexp"]
+cordata = Matrix{Float64}(data[:, cols])
+```
+
+Start with a simple Pearson correlation
+
+```{julia}
+pearson = DataFrame(StatsBase.cor(cordata), cols)
+pearson.rowname = cols
+pearson[:, Cols(:rowname, cols...)]
+```
+
+```{julia}
+spearman = DataFrame(round.(StatsBase.corspearman(cordata), digits=2), cols)
+spearman.rowname = cols
+spearman[:, Cols(:rowname, cols...)]
+```
+
+```{julia}
+data[[argmax(data[!, name]) for name in ["score_1mi", "score_2mi", "score_3mi", "score_negexp"]], ["rank_1mi", "rank_2mi", "rank_3mi", "rank_negexp"]]
+```
