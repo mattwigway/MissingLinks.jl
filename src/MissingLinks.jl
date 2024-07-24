@@ -11,6 +11,7 @@ import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint
 import ThreadsX
 import LibGEOS
 import Graphs
+import Mmap
 
 include("graph.jl")
 include("candidate_link.jl")

@@ -4,19 +4,68 @@
 
 # Tested in identify_missing_links tests
 
-function create_matrix(G, T; maxdist=5000, origins=1:nv(G))
+function create_matrix(G, T; maxdist=5000, origins=1:nv(G), mmap=nothing)
+    local by_origin, by_dest
     @info "Routing with $(Threads.nthreads()) threads"
 
     maxdist < typemax(T) || error("maxdist must be less than typemax(T) = $(typemax(T)); typemax is used to indicate unreachable")
 
-    return Distances{T}(Iterators.flatten(ThreadsX.mapi(origins) do origin
-        if origin % 1000 == 0
-            @info "Processed $origin / $(nv(G)) trips"
+    # idea to save more memory:
+    # instead of using threadsx.mapi, use @spawn and @sync to spawn a task for each origin,
+    # and then lock the array and write directly into it.
+    by_origin = if !isnothing(mmap)
+        Mmap.mmap(open(mmap * ".by_origin", "w"), Vector{Tuple{Int32, Int32, T}}, (0, ), grow=true)
+    else
+        Tuple{Int32, Int32, T}[]
+    end
+
+    lk = ReentrantLock()
+
+    process_count = 0
+    n_origins = length(origins)
+
+    # extra threads so computation can happen while waiting for IO, with buffering too much in memory
+    ThreadsX.foreach(origins) do origin
+        paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
+
+        result = [
+            (convert(Int32, origin), convert(Int32, dest), round(T, min(dist, typemax(T))))
+            for (dest, dist) in enumerate(paths.dists)
+            if dist ≤ maxdist
+        ]
+
+        # if another task is using the array, this will block
+        # TODO with slow disk, mmap enabled, too many tasks might block, and buffered results will
+        # build up in memory. I guess the solution there is to just route with less threads.
+        lock(lk) do
+            append!(by_origin, result)
+
+            process_count += 1
+            if process_count % 100 == 0
+                @info "Processed $process_count / $n_origins trips"
+            end
+        end
+    end
+
+    # since routing is multithreaded, it may not be sorted
+    # alg=QuickSort saves some memory, https://github.com/JuliaLang/julia/issues/47715
+    sort!(by_origin, alg=QuickSort)
+
+    if !is_directed(G)
+        # no need to use more memory/re-sort in an undirected graph
+        by_dest = by_origin
+    else
+        if !isnothing(mmap)
+            by_dest = Mmap.mmap(open(mmap * ".by_dest", "w"), Vector{Tuple{Int32, Int32, T}}, (length(by_origin), ))
+        else
+            by_dest = [(d, o, dist) for (o, d, dist) in by_origin]
         end
         
-        paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
-        return filter(x -> x[3] ≤ maxdist, tuple.(origin, 1:nv(G), round.(T, min.(paths.dists, typemax(T)))))
-    end), nv(G))
+        sort!(by_dest, alg=QuickSort)
+    end
+    
+    return Distances{T}(by_origin, by_dest, nv(G))
+
 end
 
 """
@@ -25,9 +74,9 @@ Store distances between all nodes in the graph. The distances are in two sorted 
 easily iterated over.
 """
 struct Distances{T <: Real} <: AbstractMatrix{T}
-    by_origin::Vector{Tuple{Int64, Int64, T}}
-    by_destination::Vector{Tuple{Int64, Int64, T}}
-    n::Int64
+    by_origin::Vector{Tuple{Int32, Int32, T}}
+    by_destination::Vector{Tuple{Int32, Int32, T}}
+    n::Int32
 end
 
 """
@@ -38,6 +87,11 @@ function Distances{T}(iter, n::Int64) where T
     sort!(by_origin) # since routing is multithreaded, it may not be sorted
     by_dest = [(d, o, dist) for (o, d, dist) in by_origin]
     sort!(by_dest)
+    # This takes an enormous amount of memory right here. At this point we have in memory
+    # 1) the original set of tuples from ThreadsX.mapi
+    # 2) by_origin, and
+    # 3) by_destination
+    # We could maybe dump (1) by collecting outside the loop
     Distances{T}(by_origin, by_dest, n)
 end
 
@@ -190,7 +244,15 @@ end
 Return the size in bytes of the stored distance matrix. Not 100% accurate as it does not account for struct padding,
 but that is negligible in real-world distance matrices.
 """
-sizeof(d::Distances) = sizeof(d.by_origin) + sizeof(d.by_destination) + sizeof(d.n)
+Base.sizeof(d::Distances) = Base.sizeof(d.by_origin) + Base.sizeof(d.by_destination) + Base.sizeof(d.n)
+
+"""
+    density(d::Distances{T})
+
+Return the density (proportion of matrix values that are filled) of a distance matrix.
+"""
+density(d::Distances) = length(d.by_origin) / (d.n ^ 2)
+
 
 """
 Compute the network distance between the two points on links, by computing
