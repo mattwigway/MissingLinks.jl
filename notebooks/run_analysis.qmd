@@ -14,6 +14,8 @@ import Dates: now
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
 DATAAXLE_PATH = CONFIG["dataaxle_path"]
+
+MAX_DIST_M::Int64 = 5250
 ```
 
 ## Read data
@@ -39,6 +41,11 @@ paths = paths[.!ismissing.(paths.geom), :]
 paths.geom = flattento2d_chtype!.(paths.geom)
 crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "crosswalks_split_mwbc.gpkg"))
 
+# this contains links that go e.g. through parks where the greenway connects to a park but does not then
+# connect directly to the rest of the sidewalk network, but we assume most pedestrians will be comfortable
+# walking through the park.
+addl_links = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "questionable_connections.gpkg"))
+
 # there are some new crosswalks since the 2019 Mecklenburg imagery. Including all of them is not
 # practical. However, ones that are identified as priority links are included in this file.
 new_crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "new_crosswalks_since_2019_mwbc.gpkg"))
@@ -54,7 +61,7 @@ sidewalks.geom = ArchGDAL.lineargeom.(sidewalks.geom)
 ## Convert to noded
 
 ```{julia}
-noded = semi_to_fully_noded(sidewalks, crosswalks, new_crosswalks, paths; snap_tolerance=3, split_tolerance=0.5)
+noded = semi_to_fully_noded(sidewalks, crosswalks, new_crosswalks, paths, addl_links; snap_tolerance=3, split_tolerance=0.5)
 ```
 
 ## Build network
@@ -77,6 +84,7 @@ G = remove_tiny_islands(G, 10)
 
 ```{julia}
 MissingLinks.graph_to_graphml(joinpath(DATA_PATH, "data", "graph.graphml"), G, pretty=true)
+MissingLinks.graph_to_gis(joinpath(DATA_PATH, "data", "graph.gpkg"), G, crs=GFT.EPSG(32119))
 ```
 
 
@@ -140,7 +148,7 @@ Greenways have points placed along them. We use a much lower snapping tolerance 
 
 ```{julia}
 greenway_points = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "greenway_points.gpkg"))
-dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1e-2)
+dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1)
 
 # should be very close to 1
 sum(dest_weights_greenway) / sum(greenway_points.weight)
@@ -161,7 +169,7 @@ matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
 Do the routing
 
 ```{julia}
-MissingLinks.fill_matrix!(G, matrix)
+MissingLinks.fill_matrix!(G, matrix; maxdist=MAX_DIST_M)
 ```
 
 Find candidate missing links (places where network distance >> geographic distance)
@@ -220,8 +228,8 @@ mean(scores)
 ### Different cutoffs
 
 ```{julia}
-scores_1mi = score_links(x -> x < 1609, candidate_links, matrix, origin_weights, dest_weights, 1609)
-scores_3mi = score_links(x -> x < 1609 * 3, candidate_links, matrix, origin_weights, dest_weights, 1609 * 3)
+@time scores_1mi = score_links(x -> x < 1609, candidate_links, matrix, origin_weights, dest_weights, 1609)
+@time scores_3mi = score_links(x -> x < 1609 * 3, candidate_links, matrix, origin_weights, dest_weights, 1609 * 3)
 ```
 
 ### Gravity function
@@ -231,8 +239,8 @@ const β = open(x -> read(x, Float64), joinpath(DATA_PATH, "beta.float64"))
 ```
 
 ```{julia}
-decayfunc(x) = x > 5250 ? 0.0 : exp(β*x)
-scores_negexp = score_links(decayfunc, candidate_links, matrix, origin_weights, dest_weights, 5250)
+decayfunc(x) = x > MAX_DIST_M ? 0.0 : exp(β*x)
+@time scores_negexp = score_links(decayfunc, candidate_links, matrix, origin_weights, dest_weights, 5250)
 ```
 
 ```{julia}
@@ -312,9 +320,11 @@ GeoDataFrames.write(joinpath(DATA_PATH, "paper", "figures", "service_areas.gpkg"
 ```
 
 ```{julia}
-
-```
-
-```{julia}
 close(dfile)
 ```
+
+
+```{julia}
+
+```
+

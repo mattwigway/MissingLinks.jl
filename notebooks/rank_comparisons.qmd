@@ -37,3 +37,14 @@ spearman[:, Cols(:rowname, cols...)]
 ```{julia}
 data[[argmax(data[!, name]) for name in ["score_1mi", "score_2mi", "score_3mi", "score_negexp"]], ["rank_1mi", "rank_2mi", "rank_3mi", "rank_negexp"]]
 ```
+
+Compare top 100 links
+
+```{julia}
+top100 = data[data.rank_2mi .≤ 100, :]
+(
+    scores_1mi = sum(top100.rank_1mi .≤ 100),
+    scores_3mi = sum(top100.rank_3mi .≤ 100),
+    scores_negexp = sum(top100.rank_negexp .≤ 100)
+)
+```
