@@ -13,7 +13,17 @@ snap_tolerance + split_tolerance.
 function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
     # flatten all the data files
     geoms = map(data) do file
-        map(file.geom) do geom
+        geomcol = if haskey(metadata(file), "geometrycolumns")
+            first(metadata(file, "geometrycolumns"))
+        elseif "geom" ∈ names(file)
+            :geom
+        elseif "geometry" ∈ names(file)
+            :geometry
+        else
+            error("No geometry column detected. Columns: $(join(names(file), ", "))")
+        end
+        
+        map(file[!, geomcol]) do geom
             result = ArchGDAL.IGeometry{ArchGDAL.wkbLineString}[]
             MissingLinks.for_each_geom(geom) do part
                 push!(result, part)
