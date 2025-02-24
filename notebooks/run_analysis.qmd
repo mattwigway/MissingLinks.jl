@@ -21,7 +21,7 @@ MAX_DIST_M::Int64 = 5250
 ## Read data
 
 We currently have three data files we're working with: sidewalks, shared-use paths, and crosswalks.
-
+∏
 ```{julia}
 # work around https://github.com/yeesian/ArchGDAL.jl/issues/333
 function flattento2d_chtype!(geom)
@@ -36,20 +36,24 @@ end
 ```{julia}
 # TODO clean up these paths
 sidewalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "sidewalks_split_mwbc.gpkg"))
+sidewalks.link_type .= "sidewalk"
 paths = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "greenways_new_split.gpkg"))
+paths.link_type .= "path"
 paths = paths[.!ismissing.(paths.geom), :]
 paths.geom = flattento2d_chtype!.(paths.geom)
 crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "crosswalks_split_mwbc.gpkg"))
+crosswalks.link_type .= "crosswalk"
 
 # this contains links that go e.g. through parks where the greenway connects to a park but does not then
 # connect directly to the rest of the sidewalk network, but we assume most pedestrians will be comfortable
 # walking through the park.
 addl_links = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "questionable_connections.gpkg"))
+addl_links.link_type .= "questionable"
 
 # there are some new crosswalks since the 2019 Mecklenburg imagery. Including all of them is not
 # practical. However, ones that are identified as priority links are included in this file.
 new_crosswalks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "network", "new_crosswalks_since_2019_mwbc.gpkg"))
-rename!(new_crosswalks, :geometry => :geom)
+new_crosswalks.link_type .= "crosswalk"
 ```
 
 The sidewalks layer has some curves, convert them to linestring
