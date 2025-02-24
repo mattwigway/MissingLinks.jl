@@ -1,4 +1,4 @@
-EdgeData = @NamedTuple{length_m::Float64, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
+EdgeData = @NamedTuple{length_m::Float64, link_type::String, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
 # if the geographic distance from two nodes is less than the snapping tolerance, we connect them
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
@@ -107,6 +107,7 @@ function add_short_edges!(G, max_edge_length)
             if dists[code_for(G, candidate)] > geographic_dist * NODE_CONNECT_FACTOR
                 G[vlabel, candidate] = (
                     length_m=geographic_dist,
+                    link_type="short",
                     geom=ArchGDAL.createlinestring([loc, G[candidate]])
                 )
             end
@@ -120,7 +121,7 @@ two edges would otherwise be duplicates because they connect the same intersecti
 
 Returns a tuple of tuples (frv, tov) - usually just one, but some edges may be split before adding to graph.
 """
-function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
+function add_geom_to_graph!(G, geom, link_type, end_node_idx, tolerance)
     # add to graph
     startpt = get_first_point(geom)[1:2]
     endpt = get_last_point(geom)[1:2]
@@ -134,7 +135,7 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
     end
 
     if !haskey(G, frv, tov)
-        G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), geom))
+        G[frv, tov] = EdgeData((ArchGDAL.geomlength(geom), link_type, geom))
         return ((frv, tov),)
     else
         # we already have an edge between these vertices. This can happen when the network looks like this:
@@ -153,8 +154,8 @@ function add_geom_to_graph!(G, geom, end_node_idx, tolerance)
         length_m = ArchGDAL.geomlength(geom)
         offset = min(1e-2, length_m * 0.1)
         return (
-            add_geom_to_graph!(G, geom_between(geom, 0.0, offset), end_node_idx, tolerance)...,
-            add_geom_to_graph!(G, geom_between(geom, offset, length_m), end_node_idx, tolerance)...
+            add_geom_to_graph!(G, geom_between(geom, 0.0, offset), link_type, end_node_idx, tolerance)...,
+            add_geom_to_graph!(G, geom_between(geom, offset, length_m), link_type, end_node_idx, tolerance)...
         )
     end
 end
@@ -170,15 +171,17 @@ function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
 
     total = sum(nrow.(layers))
 
-    for (i, multigeom) in enumerate(Iterators.flatten((l.geom for l in layers)))
+    for (i, type_geom) in enumerate(Iterators.flatten((zip(l.link_type, l.geom) for l in layers)))
         if i % 1000 == 0
             @info "Processed $i / $total geometries"
         end
 
+        link_type, multigeom = type_geom
+
         for_each_geom(multigeom) do biggeom
             # break_long_line is a no-op on lines shorter than max_edge_length
             for geom in break_long_line(biggeom, max_edge_length)
-                add_geom_to_graph!(G, geom, end_node_idx, tolerance)
+                add_geom_to_graph!(G, geom, link_type, end_node_idx, tolerance)
             end
         end
     end
@@ -259,6 +262,17 @@ function graph_to_graphml(out, G; pretty=false)
     else
         write(out, doc)
     end
+end
+
+"""
+    graph_to_gis(fn, G)
+
+Write graph G in GIS format to file fn (format determined by extension)
+"""
+function graph_to_gis(fn, G; crs=nothing)
+    gdf = DataFrame((G[t...] for t in edge_labels(G)))
+    metadata!(gdf, "geometrycolumns", (:geom,))
+    GeoDataFrames.write(fn, gdf, crs=crs)
 end
 
 """

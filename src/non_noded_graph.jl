@@ -12,7 +12,7 @@ snap_tolerance + split_tolerance.
 """
 function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
     # flatten all the data files
-    geoms = map(data) do file
+    geoms_and_types = map(data) do file
         geomcol = if haskey(metadata(file), "geometrycolumns")
             first(metadata(file, "geometrycolumns"))
         elseif "geom" ∈ names(file)
@@ -23,10 +23,10 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
             error("No geometry column detected. Columns: $(join(names(file), ", "))")
         end
         
-        map(file[!, geomcol]) do geom
-            result = ArchGDAL.IGeometry{ArchGDAL.wkbLineString}[]
+        map(zip(file.link_type, file[!, geomcol])) do (link_type, geom)
+            result = Tuple{String, ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}[]
             MissingLinks.for_each_geom(geom) do part
-                push!(result, part)
+                push!(result, (link_type, part))
             end
             return result
         end
@@ -34,7 +34,12 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
         Iterators.flatten |>
         Iterators.flatten |>
         collect
+
+    geoms = [g[2] for g in geoms_and_types]
+    types = [g[1] for g in geoms_and_types]
+
     @info "$(length(geoms)) geometry records"
+
     # next, we build a spatial index
     index = RTree(2)
 
@@ -96,9 +101,9 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
         push!(geom_breaks[connection.to], connection.to_pos)
     end
 
-    result = ArchGDAL.IGeometry{ArchGDAL.wkbLineString}[]
+    result = Vector{@NamedTuple{geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, link_type::String}}()
 
-    for (i, geom) in enumerate(geos_geoms)
+    for (i, link_type, geom) in zip(1:length(geoms), types, geos_geoms)
         breaks = sort(geom_breaks[i])
         prevbreak, restbreaks = Iterators.peel(breaks)
         for brk in restbreaks
@@ -107,10 +112,10 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
                 # TODO this makes some lines slightly shorter if the end of the line is snapped back to an earlier break
             end
 
-            push!(result, geom_between(geom, prevbreak, brk))
+            push!(result, (geom=geom_between(geom, prevbreak, brk), link_type=link_type))
             prevbreak = brk
         end
     end
 
-    return DataFrame(:geom=>result)
+    return DataFrame(result)
 end
