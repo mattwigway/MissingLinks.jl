@@ -21,7 +21,7 @@ MAX_DIST_M::Int64 = 5250
 ## Read data
 
 We currently have three data files we're working with: sidewalks, shared-use paths, and crosswalks.
-∏
+
 ```{julia}
 # work around https://github.com/yeesian/ArchGDAL.jl/issues/333
 function flattento2d_chtype!(geom)
@@ -173,7 +173,7 @@ matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
 Do the routing
 
 ```{julia}
-MissingLinks.fill_matrix!(G, matrix; maxdist=MAX_DIST_M)
+MissingLinks.fill_distance_matrix!(G, matrix; maxdist=MAX_DIST_M)
 ```
 
 Find candidate missing links (places where network distance >> geographic distance)
