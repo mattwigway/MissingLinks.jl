@@ -40,6 +40,7 @@ service_area
 MissingLinks.new_graph
 MissingLinks.for_each_geom
 MissingLinks.get_first_point
+MissingLinks.get_geometry
 MissingLinks.CandidateLink
 MissingLinks.add_geom_to_graph!
 MissingLinks.compute_net_distance
