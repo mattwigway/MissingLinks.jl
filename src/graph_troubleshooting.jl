@@ -4,7 +4,9 @@
     find_disconnected_crossings(G, dmat; tolerance=10)
 
 Find locations where edges of graph G cross without intersecting, and where the network distance between
-the intersecting points is more than `tolerance`. These are often graph errors, but may also be overpasses,
+the intersecting points is more than `tolerance`. 
+
+These are often graph errors, but may also be overpasses,
 tunnels, etc. Returns a GeoDataFrames-compatible point DataFrame with the locations, for further examination
 in GIS.
 """
@@ -66,7 +68,11 @@ end
 """
     find_dead_ends(G)
 
-Find locations in G where there is a dead end.
+Find locations in graph `G` where there is a dead end.
+
+Returns a GeoDataFrame. This is useful for network data creation as by opening
+this layer in GIS you can easily see where there are existing
+dead ends and determine if they are correct or not.
 """
 function find_dead_ends(G)
     result = ArchGDAL.IGeometry{ArchGDAL.wkbPoint}[]

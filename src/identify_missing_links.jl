@@ -32,7 +32,12 @@ If x < typemax(T) and x + y > typemax(T), throw OverflowError
 add_unless_typemax(x::T, y) where T = x == typemax(T) ? x : Base.Checked.checked_add(x, round(T, y))
 
 """
-This identifies possible missing links
+    identify_potential_missing_links(graph, distance_matrix, max_link_dist, min_net_dist)
+
+Identify locations in `graph` that are less than `max_link_dist` apart geographically, but at least `min_net_dist` apart
+in network distance (or disconnected entirely).
+
+`dmat` should be a distance matrix for all nodes in the graph, generally created by [`fill_distance_matrix!`](@ref fill_distance_matrix!)
 """
 function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
     @info "Indexing graph"
@@ -148,9 +153,12 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 end
 
 """
-Convenience function that converts links to a GeoDataFrame
+    links_to_gis(graph, links)
+
+Convenience function that converts a vector of links (and associated graph) into a GeoDataFrame, suitable
+for export to a GIS file. 
 """
-function links_to_gdf(G, links)
+function links_to_gis(G, links)
     gdf = DataFrame(links)
 
     gdf.network_length_m = ifelse.(

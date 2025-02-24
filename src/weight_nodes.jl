@@ -1,10 +1,21 @@
 """
-Using a graph and a spatial data frame, assign weights to graph nodes. This works as follows:
+    create_graph_weights(graph, geodata, weightcols, distance)
 
-1. For each entry in the data frame
-    - Find all graph edges that are within a given distance
-    - Divide each of the weights by the number of graph edges times two
-    - Assign that divided weight to each of the start and end nodes of those edges
+Using a graph and a spatial data frame, assign weights to graph nodes.
+
+Each row in the spatial data frame should have a weight associated with it
+(if they are all equivalent, the weight can be set to a column of ones). For each
+row, all graph edges within `distance` of the geometry of that row will be identified
+(the spatial data frame should be in the same projection as the network data used to
+create the graph). An equal amount of weight will be assigned to the nodes at each end of
+all identified edges. (In a corner, twice as much weight will be assigned to the node at the
+corner, as it will receive weight from each of the links adjacent to the property. The effect
+may be even more pronounced if the streets on the other side of the intersection from the row
+are also within `distance`).
+
+`weightcols` specifies which columns to use as weights. It must be a vector. Multiple weight columns
+can be specified. The function will return an n x w matrix, where n is the number of nodes in the graph,
+and w is the number of weightcols specified. This will contain the weight for each node for each weightcol.
 """
 function create_graph_weights(G, gdf, weightcols, distance)
     geomcol = first(metadata(gdf, "geometrycolumns"))

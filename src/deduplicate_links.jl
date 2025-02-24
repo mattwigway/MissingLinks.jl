@@ -6,9 +6,14 @@ mutable struct SphereOfInfluence
 end
 
 """
-deduplicate_links(list, distance_matrix, sphere_of_influence_radius)
+    deduplicate_links(list, distance_matrix, sphere_of_influence_radius)
 
-This is a heuristic function to deduplicate links. Consider the situation below. Lines are existing
+Deduplicate links using a heuristic.
+
+Arguments are a list of links (e.g. as produced by [`identify_potential_missing_links`](@ref identify_potential_missing_links)),
+a distance matrix between nodes for the graph used to identify those links, and the radius of the sphere of influence (see below).
+    
+Consider the situation below. Lines are existing
 roads. Here, you have the ends of two blocks in different subdivisions, that do not connect.
 
 ```
@@ -24,7 +29,7 @@ Since there are three edges in each subdivision in the graph above, all of which
 Clearly, all of these provide essentially the same level of access, so we want to deduplicate them.
 
 We consider two candidate links to be duplicates if they connect pairs of locations within a
-configurable distance of one another (we use 100m in the paper). To identify these links, we use the
+`sphere_of_influence_radius` of one another (we use 100m in the paper). To identify these links, we use the
 following greedy algorithm. Note that since it is a greedy algorithm, the order the links are
 identified in matters. Currently, link identification is not multithreaded, so the order of the
 links should be deterministic, and therefore you should get the same results from this deduplication
@@ -53,8 +58,8 @@ We then return the link with the shortest geographic distance from each sphere o
 that there may still be links that are close to one another; if two links define adjacent or even
 overlapping spheres of influence, but with neither link in either sphere of influence, the best
 links in the two spheres of influence may be very similar ones in between the original two links.
-For this reason, we run the algorithm iteratively until subsequent deduplications do not reduce the
-number of links.
+You could iterate the algorithm if you wanted to to prevent this, but this could result in links
+being supplanted by ones more than 100m away.
 """
 function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
     spheres_of_influence = SphereOfInfluence[]

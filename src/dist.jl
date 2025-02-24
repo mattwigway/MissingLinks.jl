@@ -4,7 +4,21 @@
 
 # Tested in identify_missing_links tests
 
-function fill_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
+"""
+    fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G))
+
+Fill an already created distance matrix `mtx` with shortest-path distances based on graph `G`.
+
+The units are the same as the underlying data, and will be rounded to the resolution of whatever the element
+type `T` of `mtx` is. We usually use UInt16 meters as these can represent quite long trips with reasonable accuracy
+while minimizing memory consumption. Using other data types is not tested.
+
+To make this faster, you can set a maximum distance `maxdist`; for destinations beyond this distance (or destinations
+that are unreachable altogether) the matrix will contain `typemax(T)`.
+
+Will use multiple threads if Julia is started with multiple threads.
+"""
+function fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
     size(mtx) == (nv(G), nv(G)) || error("Matrix must be $(nv(G))x$(nv(G))")
 
     @info "Routing with $(Threads.nthreads()) threads"
@@ -15,6 +29,7 @@ function fill_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) 
         end
         
         paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
+        # for a directed graph, this is backwards; usually would be origin is the row and dest is the column.
         mtx[:, origin] = round.(T, min.(paths.dists, typemax(T)))
     end
 end

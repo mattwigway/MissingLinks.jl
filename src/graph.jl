@@ -70,16 +70,20 @@ function new_graph()
 end
 
 """
-This adds edges between nodes that are close to one another.
+    add_short_edges!(graph, max_edge_length)
 
-This used to be done by snapping nodes during graph build, but that can be prone to errors
+Add edges to `graph` in-place between all nodes that are closer than `max_edge_length` to one another, and currently more than 2 * max_edge_length apart via the network.
+
+You might think, as I did, that snapping nodes during graph build would be an easier solution, but that can be prone to errors
 because it results in nodes being actually moved. Consider this situation:
 
+```
 ---a (0.3 m) b--3.1m---c (0.2m) d----
+```
 
 Assuming the vertices are read in a b c d order, b and c will get snapped to a, and d will not get snapped to anything.
 
-Instead, we only snap a very small distance (1e-6 meters). We then add edges between nodes close together.
+Instead, we recommend only snapping a very small distance during graph build (default 1e-6 meters). We then add edges between nodes close together.
 """
 function add_short_edges!(G, max_edge_length)
     @info "Indexing graph nodes"
@@ -161,7 +165,24 @@ function add_geom_to_graph!(G, geom, link_type, end_node_idx, tolerance)
 end
 
 """
-This builds a graph from one or more GeoDataFrame layers.
+    graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
+
+Build a graph from one or more GeoDataFrame layers.
+
+This builds a graph from a fully-noded GIS network. You can pass in an arbitrary number of
+GeoDataFrame layers, which will be combined into a single graph. They should all be in the same
+coordinate system.
+
+The `tolerance` specifies
+how far apart nodes can be and still be considered connected. This should be smaller; larger
+gaps should be closed by [`add_short_edges!`](@ref add_short_edges!); see discussion there
+for why.
+
+We assume that potential links are always where two edges pass closest to one another. As
+the length of the edges increases, this assumption gets worse. `max_edge_length` controls
+how long edges can be; any edges longer than this will be split.
+
+Both `tolerance` and `max_edge_length` are in the same units as the underlying data.
 """
 function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
     G = new_graph()
@@ -189,6 +210,13 @@ function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
     return G
 end
 
+"""
+    graph_to_graphml(outfile, graph; pretty=false)
+
+Export the `graph` to a graphml file specified in `outfile`, for visualization or manipulation with other tools.
+
+If `pretty` is set to true, the XML file will be pretty-printed.
+"""
 function graph_to_graphml(out, G; pretty=false)
     doc = XMLDocument()
     root = ElementNode("graphml")
@@ -267,7 +295,9 @@ end
 """
     graph_to_gis(fn, G)
 
-Write graph G in GIS format to file fn (format determined by extension)
+Write graph `G` to GIS file `fn`.
+
+The file type is determined by extension; I recommend `.gpkg` for GeoPackage output.
 """
 function graph_to_gis(fn, G; crs=nothing)
     gdf = DataFrame((G[t...] for t in edge_labels(G)))
@@ -276,7 +306,17 @@ function graph_to_gis(fn, G; crs=nothing)
 end
 
 """
-Data cleaning: remove islands that are smaller than a certain size
+    remove_tiny_islands(graph, min_vertices_to_retain)
+
+Remove islands from `graph` with fewer than `min_vertices_to_retain`, and return a modified graph.
+
+Often, due to bad data, there will be small islands isolated from the rest of the network. This identifies all
+components of the graph, and returns a copy of the graph with only those components with
+at least `min_vertices_to_retain`.
+
+This should already work for directed graphs, as for directed graphs it uses strongly connected
+components to determine vertices to remove. See [extensive discussion here](https://github.com/conveyal/r5/blob/v7.3/src/main/java/com/conveyal/r5/streets/TarjanIslandPruner.java#L19)
+to see why this is relevant.
 """
 function remove_tiny_islands(G, min_vertices_to_retain)
     components = if is_directed(G)

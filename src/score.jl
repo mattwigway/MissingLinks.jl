@@ -1,24 +1,7 @@
 # This file contains code to score the missing links
 
 """
-Score potential missing links
-
-For each link, we identify how much making this connection would increase the aggregate number of
-origin-weighted destinations (i.e. the sum across origins of the number of destinations accessible
-within a threshold distance). We do this in several steps:
- 1. Identify all origins and destinations within the threshold of the start of the proposed new link
- 2. For each origin and destination:
-    a. generate distances from the origin to the destination via the new link by summing
-        - Distance from origin to link
-        - Length of link
-        - Distance from link to each destination
-    b. if the distance via the new link is longer than the existing distance, continue to the next pair
-    c. otherwise, compute the distance weight using the weighting function in the accessibility metric for the distance via the new link and the existing distance
-    d. take the difference of these weights
-    e. multiply by the origin and destination weights
- 3. Sum the results
- 4. Reverse the start and end of the link, and repeat
- 5. Sum the results
+Score a potential missing link
 """
 function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
     # note: assumes undirected graph
@@ -56,6 +39,41 @@ function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weig
     return new_access
 end
 
+"""
+    score_links(decay_function, links, distance_matrix, origin_weights, dest_weights, decay_cutoff_m)
+
+Score the contribution of each link in `links` to aggregate accessibility, using the decay function and weights specified.
+
+`decay_function` is a Julia function that takes a single argument, a distance, and returns a weight; smaller weights
+mean less influence. For a two-mile cumulative opportunities function, this could just be e.g. `x -> x < 3218`. It is the
+first argument to allow use of Julia do-block syntax.
+
+`links` is the vector of links (e.g. from [`deduplicate_links`](@ref deduplicate_links)). The distance matrix is the same
+one used throughout the analysis. `origin_weights` and `dest_weights` are vectors of weights associated with each node,
+e.g. computed by [`create_graph_weight`](@ref create_graph_weights).
+
+`decay_cutoff_m`` is the distance at which `decay_function` goes to zero (for a smooth function, we recommend
+reimplementing as piecewise with a dropoff to zero at some point where additional access is largely immaterial).
+It is in meters if the input data were in meters (which we recommend as we have not tested with other units to
+ensure units are not hardcoded anywhere. Just use meters. Be a scientist.)
+
+For each link, we identify how much making this connection would increase the aggregate number of
+origin-weighted destinations (i.e. the sum across origins of the number of destinations accessible
+within a threshold distance). We do this in several steps:
+ 1. Identify all origins and destinations within the threshold of the start of the proposed new link
+ 2. For each origin and destination:
+    a. generate distances from the origin to the destination via the new link by summing
+        - Distance from origin to link
+        - Length of link
+        - Distance from link to each destination
+    b. if the distance via the new link is longer than the existing distance, continue to the next pair
+    c. otherwise, compute the distance weight using the weighting function in the accessibility metric for the distance via the new link and the existing distance
+    d. take the difference of these weights
+    e. multiply by the origin and destination weights
+ 3. Sum the results
+ 4. Reverse the start and end of the link, and repeat
+ 5. Sum the results
+"""
 function score_links(decay_function, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
     # First, score all origins using the base network
     @info "Processing links"

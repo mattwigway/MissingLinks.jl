@@ -1,14 +1,20 @@
 """
-This converts GDAL data sources where the sources are "semi-noded" - that is,
+    semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
+
+Convert GDAL data sources where the sources are "semi-noded" - that is,
 coincident ends, or an end coincident with a line segment, count as intersections - into a fully
 noded graph with nodes at each intersection, ready to be built into a graph.
+
+Data is a vararg, so arbitrarily many layers may be supplied. They will be merged into a
+single output layer.
 
 The snap tolerance is how close an end has to be to a line to be considered connected. The split
 tolerance is how close two splits must be to each other to be considered the same split,
 and should generally be much smaller, to avoid a situation where two ends snap to a line at
-points near each other, the line is split at one of them, and the split is more than snap_tolerance
+points near each other, the line is split at one of them, and the split is more than `snap_tolerance`
 distance from the other one. I further recommend setting the tolerance when building the graph to
-snap_tolerance + split_tolerance.
+`snap_tolerance` + `split_tolerance`. These should both be quite small; larger gaps in the network
+should be addressed with [`add_short_edges!`](@ref add_short_edges!).
 """
 function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
     # flatten all the data files

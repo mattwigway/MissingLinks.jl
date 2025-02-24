@@ -51,6 +51,8 @@ end
 Compute a service area starting at a particular location, based on a precomputed distance matrix, graph,
 and an optional list of links to include.
 
+Return the street segments within `threshold` distance of the location as a GIS layer.
+
 Supply edge_index=<result of index_graph_edges(G)> if you precomputed the edge spatial index to avoid recomputing
 each time the function is run.
 """

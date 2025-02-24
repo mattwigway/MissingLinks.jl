@@ -25,8 +25,7 @@ include("graph_troubleshooting.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, links_to_gdf, remove_tiny_islands, deduplicate_links,
-    score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area
-
-@compat public graph_to_gis, graph_to_graphml
+    score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area,
+    graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!
 
 end
