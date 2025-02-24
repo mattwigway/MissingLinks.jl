@@ -86,3 +86,17 @@ for_each_geom(f, g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.I
 get_first_point(g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString25D}}) = ArchGDAL.getpoint(g, 0)
 # 0 based indexing in GDAL
 get_last_point(g::Union{ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString25D}}) = ArchGDAL.getpoint(g, ArchGDAL.ngeom(g) - 1)
+
+
+"Get the geometry column from a GeoDataFrame"
+function get_geometry(gdf)
+    if haskey(metadata(gdf), "geometrycolumns")
+        gdf[!, first(metadata(gdf, "geometrycolumns"))]
+    elseif "geom" ∈ names(gdf)
+        gdf.geom
+    elseif "geometry" ∈ names(gdf)
+        gdf.geometry
+    else
+        error("Could not autodetect geometry column; geometrycolumns metadata not specified and neither :geom nor :geometry columns present.")
+    end
+end

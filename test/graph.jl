@@ -75,23 +75,23 @@ end
     tol = 1e-6
 
     # start by building up the simple graph
-    v1v2 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 0.0], [10.0, 0.0]]), end_node_idx, tol)
+    v1v2 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 0.0], [10.0, 0.0]]), missing, end_node_idx, tol)
     @test length(v1v2) == 1
     v1, v2 = first(v1v2)
     @test get_coords_xy(G[v1, v2].geom) ≈ [[0.0, 0.0], [10.0, 0.0]]
     @test G[v1, v2].length_m ≈ 10.0
 
-    v3v4 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 10.0], [10.0, 10.0]]), end_node_idx, tol)
+    v3v4 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 10.0], [10.0, 10.0]]), missing, end_node_idx, tol)
     @test v3v4 == ((v2 + 1, v2 + 2),)
     v3, v4 = first(v3v4)
 
     # v3v1 is backwards; lower vertex ID always is start of edge and geometry should get reversed
-    v3v1 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 10.0], [0.0, 0.0]]), end_node_idx, tol)
+    v3v1 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 10.0], [0.0, 0.0]]), missing, end_node_idx, tol)
     @test v3v1 == ((v1, v3),)
     @test get_coords_xy(G[v1, v3].geom) ≈ [[0.0, 0.0], [0.0, 10.0]]
 
     # there is already v3v4, so a new node should get inserted
-    v4v3 = add_geom_to_graph!(G, AG.createlinestring([[10.0, 10.0], [5.0, 5.0], [0.0, 10.0]]), end_node_idx, tol)
+    v4v3 = add_geom_to_graph!(G, AG.createlinestring([[10.0, 10.0], [5.0, 5.0], [0.0, 10.0]]), missing, end_node_idx, tol)
     @test v4v3 == (
         (v3, VertexID(5)),
         (v4, VertexID(5))
@@ -107,20 +107,20 @@ end
     @test get_coords_xy(G[v4, v3b].geom) ≈ [[10.0, 10.0], [5.0, 5.0], expected_breakpoint]
 
     # now the second component, which will get linked to the first by add_short_edges!
-    v5v6 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 11.0], [5.0, 11.0]]), end_node_idx, tol)
+    v5v6 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 11.0], [5.0, 11.0]]), missing, end_node_idx, tol)
     @test length(v5v6) == 1
     v5, v6 = v5v6[1]
     
-    v6v7 = add_geom_to_graph!(G, AG.createlinestring([[5.0, 11.0], [5.1, 11.1], [5.11, 11.0]]), end_node_idx, tol)
+    v6v7 = add_geom_to_graph!(G, AG.createlinestring([[5.0, 11.0], [5.1, 11.1], [5.11, 11.0]]), missing, end_node_idx, tol)
     @test v6v7 == ((v6, v6 + 1),)
     v7 = v6v7[1][2]
 
-    v7v8 = add_geom_to_graph!(G, AG.createlinestring([[5.11, 11.0], [5.1, 11.0]]), end_node_idx, tol)
+    v7v8 = add_geom_to_graph!(G, AG.createlinestring([[5.11, 11.0], [5.1, 11.0]]), missing, end_node_idx, tol)
     @test v7v8 == ((v7, v7 + 1),)
     v8 = v7v8[1][2]
 
     # will be removed by island pruning
-    v9v10 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 13.1], [13.1, 15.0]]), end_node_idx, tol)
+    v9v10 = add_geom_to_graph!(G, AG.createlinestring([[0.0, 13.1], [13.1, 15.0]]), missing, end_node_idx, tol)
     @test v9v10 == ((v8 + 1, v8 + 2),)
     v9, v10 = v9v10[1]
 

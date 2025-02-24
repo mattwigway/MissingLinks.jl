@@ -9,7 +9,7 @@
 end
 
 @testitem "Identify missing links" begin
-    import MissingLinks: graph_from_gdal, identify_potential_missing_links, fill_matrix!, CandidateLink
+    import MissingLinks: graph_from_gdal, identify_potential_missing_links, fill_distance_matrix!, CandidateLink
     import DataFrames: DataFrame
     import ArchGDAL as AG
     import StructEquality: @struct_hash_equal
@@ -31,7 +31,7 @@ end
         ]))
 
         dmat = zeros(UInt16, (4, 4))
-        fill_matrix!(gebar, dmat)
+        fill_distance_matrix!(gebar, dmat)
         links = identify_potential_missing_links(gebar, dmat, 2, 5)
         sortlinks!(links)
 
@@ -62,7 +62,7 @@ end
         ]))
 
         dmat = zeros(UInt16, (4, 4))
-        fill_matrix!(fbslash, dmat)
+        fill_distance_matrix!(fbslash, dmat)
         links = identify_potential_missing_links(fbslash, dmat, 2, 5)
         sortlinks!(links)
 
@@ -100,7 +100,7 @@ end
         ]))
 
         dmat = zeros(UInt16, (4, 4))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 2, 5)
         sortlinks!(links)
 
@@ -130,7 +130,7 @@ end
         ]))
 
         dmat = zeros(UInt16, (6, 6))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 2, 5)
         sortlinks!(links)
 
@@ -189,7 +189,7 @@ end
             AG.createlinestring([[525.0, 1000.0], [1000.0, 1000.0], [1000.0, 0.0]]) # DC - will be reversed
         ]); max_edge_length=50_000)
         dmat = zeros(UInt16, (nv(G), nv(G)))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 100, 1000)
 
         @test length(links) == 2
@@ -221,7 +221,7 @@ end
             AG.createlinestring([[40.0, 0.0], [40.0, 100.0]]) # BC
         ]); max_edge_length=50_000)
         dmat = zeros(UInt16, (nv(G), nv(G)))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 100, 1000)
         @test isempty(links)
     end
@@ -247,7 +247,7 @@ end
             AG.createlinestring([[30.0, 0.0], [50.0, 0.0], [50.0, 370.0], [40.0, 370.0]])
         ]); max_edge_length=250)
         dmat = zeros(UInt16, (nv(G), nv(G)))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 100, 800)
 
         @test length(links) == 2
@@ -290,7 +290,7 @@ end
             AG.createlinestring([[3.0, 0.0], [4.0, 1000.0]])
         ]); max_edge_length=50_000)
         dmat = zeros(UInt16, (nv(G), nv(G)))
-        fill_matrix!(G, dmat)
+        fill_distance_matrix!(G, dmat)
         links = identify_potential_missing_links(G, dmat, 100, 1000)
         @test isempty(links)
     end

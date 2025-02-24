@@ -28,9 +28,11 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
         else
             error("No geometry column detected. Columns: $(join(names(file), ", "))")
         end
+
+        link_types = "link_type" ∈ names(file) ? file.link_type : fill(missing, nrow(file))
         
-        map(zip(file.link_type, file[!, geomcol])) do (link_type, geom)
-            result = Tuple{String, ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}[]
+        map(zip(link_types, file[!, geomcol])) do (link_type, geom)
+            result = Tuple{Union{String, Missing}, ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}[]
             MissingLinks.for_each_geom(geom) do part
                 push!(result, (link_type, part))
             end
@@ -107,7 +109,7 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
         push!(geom_breaks[connection.to], connection.to_pos)
     end
 
-    result = Vector{@NamedTuple{geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, link_type::String}}()
+    result = Vector{@NamedTuple{geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, link_type::Union{String, Missing}}}()
 
     for (i, link_type, geom) in zip(1:length(geoms), types, geos_geoms)
         breaks = sort(geom_breaks[i])

@@ -1,5 +1,5 @@
 @testitem "compute_net_distance and fill_matrix" begin
-    import MissingLinks: graph_from_gdal, compute_net_distance, fill_matrix!
+    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!
     import DataFrames: DataFrame
     import ArchGDAL as AG
 
@@ -25,7 +25,7 @@
     ]))
 
     dmat = zeros(UInt16, (6, 6))
-    fill_matrix!(G, dmat; maxdist=12) # 1, 4 should be too far
+    fill_distance_matrix!(G, dmat; maxdist=12) # 1, 4 should be too far
 
     U = typemax(UInt16)
     @test dmat ≈ [

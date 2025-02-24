@@ -1,7 +1,7 @@
 # Test deduplication of links
 @testitem "Link deduplication" begin
     import ArchGDAL as AG
-    import MissingLinks: deduplicate_links, graph_from_gdal, fill_matrix!, CandidateLink
+    import MissingLinks: deduplicate_links, graph_from_gdal, fill_distance_matrix!, CandidateLink
     import DataFrames: DataFrame
     import Graphs: nv
 
@@ -21,7 +21,7 @@
     ]))
 
     dmat = zeros(UInt16, (nv(G), nv(G)))
-    fill_matrix!(G, dmat)
+    fill_distance_matrix!(G, dmat)
 
     @testset "Basic deduplication" begin
         # Here we have three links, two on the left two edges that are duplicates, and one further right that is not

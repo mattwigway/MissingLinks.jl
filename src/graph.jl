@@ -1,4 +1,4 @@
-EdgeData = @NamedTuple{length_m::Float64, link_type::String, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
+EdgeData = @NamedTuple{length_m::Float64, link_type::Union{String, Missing}, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
 # if the geographic distance from two nodes is less than the snapping tolerance, we connect them
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
@@ -192,7 +192,11 @@ function graph_from_gdal(layers...; tolerance=1e-6, max_edge_length=250)
 
     total = sum(nrow.(layers))
 
-    for (i, type_geom) in enumerate(Iterators.flatten((zip(l.link_type, l.geom) for l in layers)))
+    for (i, type_geom) in enumerate(Iterators.flatten((zip(
+            # use link types if not missing
+            "link_type" ∈ names(l) ? l.link_type : fill(missing, nrow(l)),
+            get_geometry(l)
+        ) for l in layers)))
         if i % 1000 == 0
             @info "Processed $i / $total geometries"
         end
