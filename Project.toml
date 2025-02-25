@@ -6,6 +6,7 @@ version = "1.0.0-DEV"
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -30,6 +31,9 @@ SuiteSparseGraphBLAS = "c2e53296-7b14-11e9-1210-bddfa8111e1d"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
+Artifacts = "1.11.0"
+GDAL = "1.9.0"
+Gadfly = "1.4.0"
 julia = "1.9"
 
 [extras]

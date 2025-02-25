@@ -3,14 +3,17 @@
 ## Graph building and troubleshooting
 
 ```@docs
+MissingLinks.get_example_data
 semi_to_fully_noded
 graph_from_gdal
 graph_to_graphml
 graph_to_gis
+nodes_to_gis
 remove_tiny_islands
 add_short_edges!
 find_disconnected_crossings
 find_dead_ends
+MissingLinks.remove_elevation!
 ```
 ## Opportunity data
 

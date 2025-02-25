@@ -310,6 +310,17 @@ function graph_to_gis(fn, G; crs=nothing)
 end
 
 """
+    nodes_to_gis(G)
+
+Extract the nodes of graph `G` into a GeoDataFrame.
+"""
+function nodes_to_gis(G)
+    gdf = DataFrame(:geom=>ArchGDAL.createpoint.([G[l] for l in labels(G)]))
+    metadata!(gdf, "geometrycolumns", :geom)
+    return gdf
+end
+
+"""
     remove_tiny_islands(graph, min_vertices_to_retain)
 
 Remove islands from `graph` with fewer than `min_vertices_to_retain`, and return a modified graph.

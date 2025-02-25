@@ -2,7 +2,7 @@
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "0fd9edec35a0808fb9ceed52d6fcb07b0997a18d"
+project_hash = "6d01016125a42ae69c232bb75210c7629edb7517"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -1184,7 +1184,7 @@ uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
 version = "10.1.4+3"
 
 [[deps.MissingLinks]]
-deps = ["ArchGDAL", "ArgParse", "Cairo", "Compat", "DataFrames", "EzXML", "Fontconfig", "GDAL", "Gadfly", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "Humanize", "LibGEOS", "LibSpatialIndex", "LinearAlgebra", "Logging", "MetaGraphsNext", "Mmap", "Plots", "StatsBase", "SuiteSparseGraphBLAS", "ThreadsX"]
+deps = ["ArchGDAL", "ArgParse", "Artifacts", "Cairo", "Compat", "DataFrames", "EzXML", "Fontconfig", "GDAL", "Gadfly", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "Humanize", "LibGEOS", "LibSpatialIndex", "LinearAlgebra", "Logging", "MetaGraphsNext", "Mmap", "Plots", "StatsBase", "SuiteSparseGraphBLAS", "ThreadsX"]
 path = ".."
 uuid = "472ee5c9-fceb-493a-8c64-09683b8345c2"
 version = "1.0.0-DEV"

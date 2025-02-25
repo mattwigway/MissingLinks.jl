@@ -153,12 +153,15 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 end
 
 """
-    links_to_gis(graph, links)
+    links_to_gis(graph, links, pairs...)
 
 Convenience function that converts a vector of links (and associated graph) into a GeoDataFrame, suitable
 for export to a GIS file. 
+
+`pairs`` should be pairs of :col_name=>values that will be added to the output. For example, you will often
+want to add scores to your output.
 """
-function links_to_gis(G, links)
+function links_to_gis(G, links, pairs...)
     gdf = DataFrame(links)
 
     gdf.network_length_m = ifelse.(
@@ -177,6 +180,10 @@ function links_to_gis(G, links)
             [ArchGDAL.getx(startg, 0), ArchGDAL.gety(startg, 0)],
             [ArchGDAL.getx(endg, 0), ArchGDAL.gety(endg, 0)]
         ])
+    end
+
+    for pair in pairs
+        gdf[!, pair[1]] = pair[2]
     end
 
     return gdf

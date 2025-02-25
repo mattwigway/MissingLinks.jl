@@ -100,3 +100,21 @@ function get_geometry(gdf)
         error("Could not autodetect geometry column; geometrycolumns metadata not specified and neither :geom nor :geometry columns present.")
     end
 end
+
+"""
+    remove_elevation!(geom)
+
+Remove the Z component of a geometry, and change the ArchGDAL wrapper type to match.
+
+This does mutate its argument, but in order to re-wrap in a new ArchGDAL type a new wrapper must be returned. So you should
+use the return value of the function.
+
+Workaround for https://github.com/yeesian/ArchGDAL.jl/issues/333
+"""
+function remove_elevation!(geom)
+    # keep geom in scope so it doesn't get destroyed before we're ready
+    # atm this shouldn't happen as flattento2d! returns its argument, but if #333 is fixed
+    # we don't want to rely on implementation details.
+    new_geom = ArchGDAL.flattento2d!(geom)
+    return ArchGDAL.IGeometry(GDAL.ogr_g_clone(new_geom.ptr))
+end
