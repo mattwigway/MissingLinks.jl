@@ -52,7 +52,7 @@ first argument to allow use of Julia do-block syntax.
 one used throughout the analysis. `origin_weights` and `dest_weights` are vectors of weights associated with each node,
 e.g. computed by [`create_graph_weight`](@ref create_graph_weights).
 
-`decay_cutoff_m`` is the distance at which `decay_function` goes to zero (for a smooth function, we recommend
+`decay_cutoff_m` is the distance at which `decay_function` goes to zero (for a smooth function, we recommend
 reimplementing as piecewise with a dropoff to zero at some point where additional access is largely immaterial).
 It is in meters if the input data were in meters (which we recommend as we have not tested with other units to
 ensure units are not hardcoded anywhere. Just use meters. Be a scientist.)
