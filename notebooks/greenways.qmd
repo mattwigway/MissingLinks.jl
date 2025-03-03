@@ -40,3 +40,6 @@ out = DataFrame(out)
 ```{julia}
 GeoDataFrames.write(joinpath(CONFIG["data_path"], "data", "destinations", "greenway_points.gpkg"), out, crs=GFT.EPSG(32119))
 ```
+
+```{julia}
+```

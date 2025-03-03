@@ -79,7 +79,7 @@ matrix = Mmap.mmap(dfile, Matrix{UInt16}, (nv(G), nv(G)); grow=true)
 Do the routing
 
 ```{julia}
-MissingLinks.fill_matrix!(G, matrix)
+MissingLinks.fill_distance_matrix!(G, matrix)
 ```
 
 ```{julia}
