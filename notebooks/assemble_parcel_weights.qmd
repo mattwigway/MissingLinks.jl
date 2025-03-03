@@ -235,3 +235,6 @@ weighted_parcels = filter(parcels, weight > 0) %>%
 
 write_sf(weighted_parcels, file.path(config$data_path, "data", "destinations", "weighted_parcels.gpkg"))
 ```
+
+```{r}
+```

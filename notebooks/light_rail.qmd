@@ -24,8 +24,11 @@ Deduplicate and merge
 lrstops = gold %>%
     filter(Stop_Name != "CTC/Arena" & Status == "Operating") %>%
     select(Stop_Name) %>%
-    mutate(line="Gold")
+    mutate(line="Gold") %>%
     bind_rows(select(blue, NAME) %>% rename(Stop_Name = NAME) %>% mutate(line="Blue"))
 
 write_sf(lrstops, file.path(config$data_path, "data", "destinations", "lr_stops.gpkg"))
+```
+
+```{r}
 ```

@@ -136,9 +136,9 @@ sum(dest_weights_unsnapped) / sum(dest_points_unsnapped.weight)
 
 ```{julia}
 nbhd_parks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "neighborhood_parks.gpkg"))
-regional_parks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "neighborhood_parks.gpkg"))
+regional_parks = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "regional_parks.gpkg"))
 nbhd_parks.weight .= 2.0
-regional_parks.weight .= 2.0
+regional_parks.weight .= 3.0
 parks = vcat(nbhd_parks, regional_parks)
 parks.geom = reproject(parks.geom, GFT.EPSG(2264), GFT.EPSG(32119))
 metadata!(parks, "geometrycolumns", (:geom,))
@@ -152,9 +152,9 @@ Greenways have points placed along them. We use a much lower snapping tolerance 
 
 ```{julia}
 greenway_points = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "greenway_points.gpkg"))
-dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1)
+dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1) .* 2 # greenways are med priority - 2 points per km
 
-# should be very close to 1
+# should be very close to 2
 sum(dest_weights_greenway) / sum(greenway_points.weight)
 ```
 
@@ -248,15 +248,16 @@ decayfunc(x) = x > MAX_DIST_M ? 0.0 : exp(β*x)
 ```
 
 ```{julia}
-links_gis = links_to_gdf(G, candidate_links)
-links_gis.score_1mi = scores_1mi
-links_gis.score_2mi = scores
-links_gis.score_3mi = scores_3mi
-links_gis.score_negexp = scores_negexp
-links_gis.rank_1mi = competerank(scores_1mi, rev=true)
-links_gis.rank_2mi = competerank(scores, rev=true)
-links_gis.rank_3mi = competerank(scores_3mi, rev=true)
-links_gis.rank_negexp = competerank(scores_negexp, rev=true)
+links_gis = links_to_gis(G, candidate_links,
+    :score_1mi => scores_1mi,
+    :score_2mi => scores,
+    :score_3mi => scores_3mi,
+    :score_negexp => scores_negexp,
+    :rank_1mi => competerank(scores_1mi, rev=true),
+    :rank_2mi => competerank(scores, rev=true),
+    :rank_3mi => competerank(scores_3mi, rev=true),
+    :rank_negexp => competerank(scores_negexp, rev=true)
+)
 
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 
@@ -264,7 +265,7 @@ GeoDataFrames.write(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"),
 ```
 
 ```{julia}
-links_gis = links_to_gdf(G, all_candidate_links)
+links_gis = links_to_gis(G, all_candidate_links)
 GeoDataFrames.write(joinpath(DATA_PATH, "data", "all_candidate_missing_links.gpkg"), links_gis; crs=GFT.EPSG(32119));
 ```
 
