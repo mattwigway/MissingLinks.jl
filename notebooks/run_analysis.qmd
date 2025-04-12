@@ -182,7 +182,7 @@ Find candidate missing links (places where network distance >> geographic distan
 all_candidate_links = identify_potential_missing_links(G, matrix, 100, 1000)
 ```
 
-Deduplicate similar links (~5min)
+Deduplicate similar links
 
 ```{julia}
 candidate_links = deduplicate_links(all_candidate_links, matrix, 100)
