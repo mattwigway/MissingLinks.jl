@@ -118,6 +118,8 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
             if brk - prevbreak < split_tolerance
                 continue # don't make a new split
                 # TODO this makes some lines slightly shorter if the end of the line is snapped back to an earlier break
+                # This is probably actually desirable though, as it will clean up overshoots automatically, and should not affect connectivity
+                # if add_short_edges is used with a tolerance of split_tolerance + snap_tolerance
             end
 
             push!(result, (geom=geom_between(geom, prevbreak, brk), link_type=link_type))

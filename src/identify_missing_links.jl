@@ -101,6 +101,10 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
             
             # we do the subtraction here instead of adding above to avoid overflow
             # if upper_bound_net_dist is typemax(UInt16)
+            # the edge lengths are Float64, so this should not overflow as promotion will happen
+            # Furthermore, even if types were not promoted, this cannot underflow with the default parameters,
+            # as min_net_dist is 1000m and edges can be no longer than 250m.
+            # doing a checked subtract here would not be the world's worst idea
             if upper_bound_net_dist > min_net_dist - source_edge_length_m - candidate_edge_length_m
                 candidate_edge_geom = G[candidate...].geom
                 # we might have a missing link. Calculate geographic distance.
@@ -108,8 +112,6 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 
                 if geo_distance ≤ max_link_dist
                     # Now, find the places that are closest
-                    # possible optimization: move outside loop. But in many cases this will never
-                    # get hit as the conditionals will be false.
                     point_on_source, point_on_candidate = LibGEOS.nearestPoints(source_edge_geom, candidate_edge_geom)
                     length_m = LibGEOS.distance(point_on_source, point_on_candidate)
                     isapprox(length_m, geo_distance, atol=1e-6) ||

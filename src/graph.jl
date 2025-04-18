@@ -108,6 +108,9 @@ function add_short_edges!(G, max_edge_length)
             # doing this inside the loop because each added edge may affect other distances. This is, of course, non-ideal for performance.
             dists = dijkstra_shortest_paths(G, [code_for(G, vlabel)], maxdist=geographic_dist * NODE_CONNECT_FACTOR).dists
 
+            # NODE_CONNECT_FACTOR controls creating rats nests where there is a triangle. If you have two nodes
+            # that are geographically 2m apart, but are connected via the network in a distance of only 3m, we don't
+            # add a short link completing the triangle.
             if dists[code_for(G, candidate)] > geographic_dist * NODE_CONNECT_FACTOR
                 G[vlabel, candidate] = (
                     length_m=geographic_dist,

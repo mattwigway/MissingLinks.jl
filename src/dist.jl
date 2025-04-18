@@ -49,6 +49,9 @@ function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, d
         # this should not be possible
         error("One link is reverse of another!")
     else
+        # get the minimum distance, all possible combinations of from and to
+        # there are 8 comparisons because this is not assuming undirectedness (though
+        # other places in the code still do).
         min(
             add_unless_typemax(dmat[sfr, dfr], sdist + ddist),
             add_unless_typemax(dmat[sto, dfr], senddist + ddist),

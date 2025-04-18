@@ -47,6 +47,7 @@ function create_graph_weights(G, gdf, weightcols, distance)
         for (i, weightcol) in enumerate(weightcols)
             # can't use .+= here as there may (often) be duplicate nodes when
             # there are multiple close-by edges. x[[1, 1]] .+= 2 only adds two once.
+            # https://discourse.julialang.org/t/unexpected-behavior-of-vectorized-with-duplicate-indices/112537/4
             for node in nodes
                 weights[node, i] += row[weightcol] / length(nodes)
             end

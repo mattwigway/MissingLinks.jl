@@ -71,9 +71,12 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
             # one end of each of the edges must be in the sphere of influence
             if (link.fr_edge_src ∈ soi.nodes || link.fr_edge_tgt ∈ soi.nodes) &&
                 (link.to_edge_src ∈ soi.nodes || link.to_edge_tgt ∈ soi.nodes) &&
+                # That still doesn't mean it's in the sphere of influence - an end node could be but the actual point
+                # where the link connects might still not be
                 (
                     # we don't know whether the links face the same direction or not
                     (
+                        # links face same direction: start near start, end near end
                         compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
                             soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
@@ -82,6 +85,7 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
                             soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius
                     ) ||
                     (
+                        # links face opposite directions: start near end, end near start
                         compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
                             soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius &&
