@@ -52,3 +52,51 @@
     # disconnected
     @test compute_net_distance(dmat, 1, 2, UInt16(2), UInt16(4), 5, 6, UInt16(2), UInt16(4)) == U
 end
+
+@testitem "all possible combinations of compute_net_dist" begin
+    # Test all possible combinations of which ends are closer.
+    # The graph looks like this:
+    #  |\
+    #  | \ 
+    #  |
+    #  | /
+    #  |/
+    #  We build it with the two angled edges in all possible orientations to make sure the correct distance is calculated
+    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!
+    import DataFrames: DataFrame
+    import ArchGDAL as AG
+
+    for reverse1 in [false, true]
+        for reverse2 in [false, true]
+            for reversemid in [false, true]
+                line1 = [[0.0, 0.0], [0.0, 1.0]]
+                line2 = [[3.0, 0.0], [3.0, 1.0]]
+                mid = [[0.0, 0.0], [3.0, 0.0]]
+
+                G = graph_from_gdal(DataFrame(:geom=>[
+                    AG.createlinestring(reverse1 ? reverse(line1) : line1),
+                    AG.createlinestring(reverse2 ? reverse(line2) : line2),
+                    AG.createlinestring(reversemid ? reverse(mid) : mid)
+                ]))
+
+                # true distance from endpoints should be 1 + 1 + 3
+                dmat = zeros(UInt16, (4, 4))
+                fill_distance_matrix!(G, dmat)
+
+                @test compute_net_distance(
+                    dmat,
+                    1,
+                    2,
+                    # if one is reversed, route from the start of one (the disconnected part)
+                    # otherwise, the end
+                    reverse1 ? zero(UInt16) : one(UInt16),
+                    reverse1 ? one(UInt16) : zero(UInt16),
+                    3,
+                    4,
+                    reverse2 ? zero(UInt16) : one(UInt16),
+                    reverse2 ? one(UInt16) : zero(UInt16),
+                ) ≈ 5
+            end
+        end
+    end
+end
