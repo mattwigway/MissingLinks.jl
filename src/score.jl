@@ -12,19 +12,27 @@ function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weig
 
     new_access = 0.0
     for origin in eachindex(origin_fr_distances)
+        # how far is this origin from the start of this link?
         origin_distance = min(
             add_unless_typemax(origin_fr_distances[origin], link.fr_dist_from_start),
             add_unless_typemax(origin_to_distances[origin], link.fr_dist_to_end)
         )
-        if origin_distance ≤ (decay_cutoff_m - link.geographic_length_m)
+
+        # the subtraction should never overflow, because decay_cutoff will generally be more than the
+        # maximum length of the link, but make sure
+        if origin_distance ≤ Base.Checked.checked_sub(decay_cutoff_m, link.geographic_length_m)
+            # It is close enough it could possibly provide access to something (distance to start of link
+            # plus length of link itself)
             for dest in eachindex(dest_fr_distances)
                 dest_distance = min(
                     add_unless_typemax(dest_fr_distances[dest], link.to_dist_from_start),
                     add_unless_typemax(dest_to_distances[dest], link.to_dist_to_end)
                 )
 
-                if dest_distance ≤ (decay_cutoff_m - link.geographic_length_m)
-                    new_dist = origin_distance + link.geographic_length_m + dest_distance
+                if dest_distance ≤ Base.Checked.checked_sub(decay_cutoff_m, link.geographic_length_m)
+                    # also should not overflow as the 2x the decay cutoff + the link length should not be more than typemax,
+                    # but check
+                    new_dist = Base.Checked.checked_add(Base.Checked.checked_add(origin_distance, link.geographic_length_m), dest_distance)
                     old_dist = dmat[dest, origin]
                     if (new_dist < old_dist)
                         # only affects access if it makes the trip shorter
