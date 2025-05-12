@@ -24,6 +24,7 @@ for mgeom in greenways.geom
     for_each_geom(mgeom) do geom
         geosgeom = GeoInterface.convert(LibGEOS, geom)
         length_m = LibGEOS.geomLength(geosgeom)
+        # this gives one point per km. this is doubled in run_analysis to two points per km (medium priority destination)
         weight = length_m / 1000
         n_locs = length_m ÷ 10
         weight_per_loc = weight / n_locs

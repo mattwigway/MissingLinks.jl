@@ -106,6 +106,15 @@ metadata!(parcels, "geometrycolumns", (:geom,))
 origin_weights = create_graph_weights(G, parcels, [:est_pop], 20)[:, 1]
 ```
 
+It's not really fair to calculate the percentage of Mecklenburg County population assigned to the network, since we don't have sidewalk data outside the city of Charlotte. However, a few folks outside the city may be assigned to the network (either because they are near the boundary, or because they are on a greenway or something that extends beyond the boundaries, which our greenway network does). So we reassign just the City of Charlotte parcels to the network. We don't use these weights in analysis—we stick to all of Mecklenburg County for that—but we do calculate the percentage based on this.
+
+```{julia}
+charlotte_pop = parcels[parcels.municipali .== "CHARLOTTE", :]
+metadata!(charlotte_pop, "geometrycolumns", (:geom,))
+charlotte_weights = create_graph_weights(G, charlotte_pop, [:est_pop], 20)[:, 1]
+sum(charlotte_weights) / sum(charlotte_pop.est_pop)
+```
+
 Destinations are a little trickier because they're split across multiple files. We have a parcels file that has destinations snapped to parcels (for destinations that are likely to be in the middle of parcels), point features (for bus stops), and area features (neighborhood and regional parks).
 
 ```{julia}
@@ -160,6 +169,18 @@ sum(dest_weights_greenway) / sum(greenway_points.weight)
 
 ```{julia}
 dest_weights = dest_weights_snapped .+ dest_weights_unsnapped .+ dest_weights_parks .+ dest_weights_greenway
+```
+
+```{julia}
+g_nodes = MissingLinks.nodes_to_gis(G)
+g_nodes.weights_snapped = dest_weights_snapped
+g_nodes.weights_unsnapped = dest_weights_unsnapped
+g_nodes.weights_parks = dest_weights_parks
+g_nodes.weights_greenway = dest_weights_greenway[:, 1]
+g_nodes.weights_dest = dest_weights[:, 1] # oops - fortunately a one column matrix behaves like a vector in Julia for most things
+g_nodes.origin_weights = origin_weights
+metadata!(g_nodes, "geometrycolumns", (:geom,))
+GeoDataFrames.write(joinpath(DATA_PATH, "data", "destinations", "node_weights.gpkg"), g_nodes)
 ```
 
 ## Run the core algorithm

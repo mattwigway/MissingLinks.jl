@@ -5,7 +5,7 @@ title: Rank comparisons
 How sensitive is the ranking of the links to different cutoffs and distance-decay functions?
 
 ```{julia}
-using GeoDataFrames, StatsBase, DataFrames
+using GeoDataFrames, StatsBase, DataFrames, CSV
 import TOML
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
@@ -32,6 +32,7 @@ pearson[:, Cols(:rowname, cols...)]
 spearman = DataFrame(round.(StatsBase.corspearman(cordata), digits=2), cols)
 spearman.rowname = cols
 spearman[:, Cols(:rowname, cols...)]
+CSV.write("spearman.csv", spearman)
 ```
 
 ```{julia}
@@ -41,10 +42,20 @@ data[[argmax(data[!, name]) for name in ["score_1mi", "score_2mi", "score_3mi", 
 Compare top 100 links
 
 ```{julia}
-top100 = data[data.rank_2mi .≤ 100, :]
-(
-    scores_1mi = sum(top100.rank_1mi .≤ 100),
-    scores_3mi = sum(top100.rank_3mi .≤ 100),
-    scores_negexp = sum(top100.rank_negexp .≤ 100)
-)
+top100_cmp = DataFrame(map([:rank_1mi, :rank_2mi, :rank_3mi, :rank_negexp]) do src
+
+    top100 = data[data[!, src] .≤ 100, :]
+    (
+        rowname = src,
+        scores_1mi = sum(top100.rank_1mi .≤ 100),
+        scores_2mi = sum(top100.rank_2mi .≤ 100),
+        scores_3mi = sum(top100.rank_3mi .≤ 100),
+        scores_negexp = sum(top100.rank_negexp .≤ 100)
+    )
+end)
+
+CSV.write("top100.csv", top100_cmp)
+```
+
+```{julia}
 ```
