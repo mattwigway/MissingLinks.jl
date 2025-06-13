@@ -131,7 +131,7 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
             # edges always go lower to higher numbered in undirected graph
             # TODO directed graph
             if n1 > n2
-                geom = reverse(geom)
+                geom = reverse_geom(geom)
                 n2, n1 = n1, n2
             end
 
