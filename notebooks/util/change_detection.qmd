@@ -1,0 +1,67 @@
+```{julia}
+using GeoDataFrames, DataFrames, DataFramesMeta, ArchGDAL, Plots, StatsBase
+import TOML
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+DATA_PATH = CONFIG["data_path"]
+```
+
+```{julia}
+old = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links_noregionalparks.gpkg"))
+new = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"))
+```
+
+```{julia}
+old100 = @chain old begin
+    @subset :rank_2mi .≤ 100
+end
+
+new100 = @chain new begin
+    @subset :rank_2mi .≤ 100
+end
+```
+
+```{julia}
+# j = @chain old100 begin
+#     innerjoin(new100, on=[:rank_2mi], renamecols="_old"=>"_new")
+# end
+
+j = @chain old100 begin
+    innerjoin(new100, on=[:fr_edge_src, :fr_edge_tgt, :to_edge_src, :to_edge_tgt], renamecols="_old"=>"_new")
+end
+
+# 1 mm buffer
+sum(ArchGDAL.contains.(ArchGDAL.buffer.(j.geometry_old, 0.01), j.geometry_new))
+```
+
+```{julia}
+jall = @chain old begin
+    innerjoin(new, on=[:fr_edge_src, :fr_edge_tgt, :to_edge_src, :to_edge_tgt], renamecols="_old"=>"_new")
+end
+
+@assert nrow(jall) == nrow(new)
+```
+
+```{julia}
+scatter(jall.score_2mi_old .+ 1, jall.score_2mi_new .+ 1, xaxis=:log, yaxis=:log, xlabel="Old", ylabel="New", legend=false)
+```
+
+```{julia}
+histogram(jall.score_2mi_new .- jall.score_2mi_old)
+```
+
+```{julia}
+histogram(jall.score_2mi_new ./ jall.score_2mi_old)
+```
+
+```{julia}
+quantile((jall.score_2mi_new .+ 1) ./ (jall.score_2mi_old .+ 1), [0.125, 0.875])
+```
+
+```{julia}
+# newly in top 100
+jall[(jall.rank_2mi_new .≤ 100) .≠ (jall.rank_2mi_old .≤ 100), [:rank_2mi_new, :rank_2mi_old]]
+```
+
+```{julia}
+cor(jall.score_2mi_new, jall.score_2mi_old)
+```
