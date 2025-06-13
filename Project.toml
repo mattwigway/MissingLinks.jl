@@ -10,6 +10,7 @@ Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 Fontconfig = "186bb1d3-e1f7-5a2c-a377-96d770f13627"
 GDAL = "add2ef01-049f-52c4-9ee2-e494f65e021a"
@@ -32,10 +33,11 @@ ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
 Artifacts = "1.11.0"
+DataStructures = "0.18.22"
 GDAL = "1.9.0"
 Gadfly = "1.4.0"
-julia = "1.9"
 GeoDataFrames = "0.3"
+julia = "1.9"
 
 [extras]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
