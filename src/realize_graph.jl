@@ -41,7 +41,7 @@ end
 """
     realize_graph(G, links)
 
-"Realize" the graph `G`` and candidate links `links`.
+"Realize" the graph `G` and candidate links `links`.
 
 In identifying, deduplicating, and scoring missing links, we never actually put those
 links into the graph. Instead, each link stores information about where it connects to
