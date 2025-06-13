@@ -138,7 +138,7 @@ function add_geom_to_graph!(G, geom, link_type, end_node_idx, tolerance)
     # geometry always goes from lower-numbered to higher-numbered node
     if tov < frv
         frv, tov = tov, frv
-        geom = reverse(geom)
+        geom = reverse_geom(geom)
     end
 
     if !haskey(G, frv, tov)
