@@ -7,8 +7,7 @@ author: Matt Bhagat-Conway
 using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL,
     MetaGraphsNext, CSV, Gadfly, StatsBase, DataFramesMeta
 import Humanize: digitsep
-import Cairo, Fontconfig, GDAL
-import TOML
+import GDAL, TOML
 import GeoFormatTypes as GFT
 import Dates: now
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
