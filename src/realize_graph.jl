@@ -139,7 +139,7 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
     for link in realized_links.realized
         @assert !isnothing(link.srcnode)
         @assert !isnothing(link.dstnode)
-        @assert !haskey(G2, (link.srcnode, link.dstnode))
+        !haskey(G2, (link.srcnode, link.dstnode)) || error("Duplicate candidate link detected. Did you run deduplicate_links?")
 
         G2[link.srcnode, link.dstnode] = EdgeData((
             link.link.geographic_length_m,
