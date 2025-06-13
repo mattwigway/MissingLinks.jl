@@ -26,7 +26,7 @@ include("graph_troubleshooting.jl")
 include("example_data.jl")
 
 
-export graph_from_gdal, identify_potential_missing_links, links_to_gdf, remove_tiny_islands, deduplicate_links,
+export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
     score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area,
     graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!,
     nodes_to_gis
