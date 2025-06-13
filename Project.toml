@@ -9,6 +9,7 @@ ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 GDAL = "add2ef01-049f-52c4-9ee2-e494f65e021a"
 Gadfly = "c91e804a-d5a3-530f-b6f0-dfbca275c004"
@@ -29,6 +30,7 @@ ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 # These compat bounds are probably unnecessarily tight, they're just the versions used in
 # development
 [compat]
+<<<<<<< HEAD
 ArchGDAL = "0.10.8"
 ArgParse = "1.2.0"
 Compat = "4.16.0"
@@ -52,5 +54,12 @@ Mmap = "1.9"
 Logging = "1.9"
 LinearAlgebra = "1.9"
 Artifacts = "1.9"
+=======
+Artifacts = "1.11.0"
+DataStructures = "0.18.22"
+GDAL = "1.9.0"
+Gadfly = "1.4.0"
+GeoDataFrames = "0.3"
+>>>>>>> 23716d5 (initial work on #14 - add realize_graph function to create graph with links realized)
 julia = "1.9"
 
