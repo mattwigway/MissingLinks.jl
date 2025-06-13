@@ -74,9 +74,9 @@ end
                 mid = [[0.0, 0.0], [3.0, 0.0]]
 
                 G = graph_from_gdal(DataFrame(:geom=>[
-                    AG.createlinestring(reverse1 ? reverse_geom(line1) : line1),
-                    AG.createlinestring(reverse2 ? reverse_geom(line2) : line2),
-                    AG.createlinestring(reversemid ? reverse_geom(mid) : mid)
+                    AG.createlinestring(reverse1 ? reverse(line1) : line1),
+                    AG.createlinestring(reverse2 ? reverse(line2) : line2),
+                    AG.createlinestring(reversemid ? reverse(mid) : mid)
                 ]))
 
                 # true distance from endpoints should be 1 + 1 + 3
