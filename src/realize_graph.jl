@@ -127,10 +127,18 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
             # if it's the end, use the actual edge length for end
             d2f = n2 == v2 ? G[v1, v2].length_m : convert(Float64, d2)
 
+            geom = geom_between(G[v1, v2].geom, d1, d2f)
+            # edges always go lower to higher numbered in undirected graph
+            # TODO directed graph
+            if n1 > n2
+                geom = reverse(geom)
+                n2, n1 = n1, n2
+            end
+
             G2[n1, n2] = EdgeData((
                 d2f - d1,
                 G[v1, v2].link_type,
-                geom_between(G[v1, v2].geom, d1, d2f)
+                geom
             ))
         end
     end
@@ -139,12 +147,21 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
     for link in realized_links.realized
         @assert !isnothing(link.srcnode)
         @assert !isnothing(link.dstnode)
-        !haskey(G2, (link.srcnode, link.dstnode)) || error("Duplicate candidate link detected. Did you run deduplicate_links?")
+
+        src = link.srcnode
+        dst = link.dstnode
+
+        # lower numbered vertex always comes first
+        if (src > dst)
+            dst, src = src, dst
+        end
+
+        (link.srcnode, link.dstnode) ∉ edge_labels(G2) || error("Duplicate candidate link detected. Did you run deduplicate_links?")
 
         G2[link.srcnode, link.dstnode] = EdgeData((
             link.link.geographic_length_m,
             "candidate",
-            ArchGDAL.createlinestring([G2[link.srcnode], G2[link.dstnode]])
+            ArchGDAL.createlinestring([G2[src], G2[dst]])
         ))
     end
 
