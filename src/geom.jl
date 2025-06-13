@@ -118,3 +118,14 @@ function remove_elevation!(geom)
     new_geom = ArchGDAL.flattento2d!(geom)
     return ArchGDAL.IGeometry(GDAL.ogr_g_clone(new_geom.ptr))
 end
+
+"""
+    get_xy(geom)
+
+Convert a geometry into a Vector{Vector{Float64}} with the xy coordinates (used in testing).
+"""
+function get_xy(geom)
+    map(0:(ArchGDAL.ngeom(geom) - 1)) do i
+        [ArchGDAL.getx(geom, i), ArchGDAL.gety(geom, i)]
+    end
+end

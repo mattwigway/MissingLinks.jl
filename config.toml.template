@@ -1,1 +1,8 @@
-data_path = "path/to/Missing links project/data"
+# Path to OneDrive
+data_path = "/path/to/OneDrive/Missing link detection/"
+
+# Data Axle data is restricted to non-shared directories as it cannot be shared outside UNC
+dataaxle_path = "/path/to/OneDrive/data_axle"
+
+# libpostal data path (optional, only for Charlotte data preparation)
+libpostal_data_path = "/path/to/postal_data"

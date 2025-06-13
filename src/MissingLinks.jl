@@ -10,6 +10,7 @@ import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint
 import Compat: @compat
 import Artifacts: @artifact_str
 import GeoInterface, ArchGDAL, ThreadsX, LibGEOS, Graphs, GeoDataFrames, GDAL
+import DataStructures: DefaultDict
 
 
 include("graph.jl")
@@ -24,12 +25,13 @@ include("geom.jl")
 include("service_area.jl")
 include("graph_troubleshooting.jl")
 include("example_data.jl")
+include("realize_graph.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
     score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area,
     graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!,
-    nodes_to_gis
+    nodes_to_gis, realize_graph
 
 @compat public remove_elevation!, get_example_data
 end
