@@ -5,3 +5,4 @@
 *.raw
 *.by_origin
 example_data
+Manifest.toml

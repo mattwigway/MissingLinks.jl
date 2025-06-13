@@ -206,4 +206,44 @@
 
     # Candidate link 8 should exist
     test_edge(v.C, v.E, "candidate")
+
+    # HI should be split by at 100
+    # splits happen in order of edges, so HI will be split before JK
+    # even though JK is split by a lower numbered candidate
+    @test all(collect(G2[newv(4)]) .≈ [170., 100.])
+    test_edge(v.H, newv(4), "existing")
+    test_edge(newv(4), v.H, "existing")
+
+    # JK should be split at 40 by link 3
+    @test all(collect(G2[newv(5)]) .≈ [250., 40.])
+    test_edge(v.J, newv(5), "existing")
+    test_edge(newv(5), v.K, "existing")
+
+    # KL should be split at 80 (this split shared between link 6 and 10)
+    @test all(collect(G2[newv(6)]) .≈ [250., 80.])
+    test_edge(v.K, newv(6), "existing")
+    test_edge(newv(6), v.L, "existing")
+
+    # Candidate link 3 should exist
+    test_edge(v.F, newv(5), "candidate")
+
+    # Candidate link 5 should exist
+    test_edge(v.G, v.K, "candidate")
+
+    # Candidate link 6 should exist
+    test_edge(v.H, newv(6), "candidate")
+
+    # Candidate link 9 should exist
+    test_edge(newv(4), v.L, "candidate")
+
+    # MN, NO, OP not split
+    test_edge(v.M, v.N, "existing")
+    test_edge(v.N, v.O, "existing")
+    test_edge(v.O, v.P, "existing")
+
+    # candidate link 7 should exist
+    test_edge(v.L, v.N, "candidate")
+
+    # candidate link 10 should exist
+    test_edge(newv(6), v.M, "candidate")
 end
