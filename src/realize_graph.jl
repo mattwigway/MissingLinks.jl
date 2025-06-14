@@ -63,6 +63,11 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
     realized_links = index_candidate_links(G, links)
 
     # Step 3: loop over edges
+
+    # what is the minimum unused vertex ID - can't just use nv(G) here in case some
+    # vertices have been removed.
+    next_vertexid = maximum(labels(G)).id + 1
+
     for (v1, v2) in edge_labels(G)
         # locations where we will break this edge
         breakpoints = T[]
@@ -87,7 +92,8 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
             elseif breakpoint == round(T, G[v1, v2].length_m)
                 v2
             else
-                new_id = VertexID(nv(G2) + 1)
+                new_id = VertexID(next_vertexid)
+                next_vertexid += 1
                 @assert !haskey(G, new_id)
 
                 # figure out where it goes
@@ -144,7 +150,7 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
     end
 
     # add candidate links to graph
-    for link in realized_links.realized
+    for (i, link) in enumerate(realized_links.realized)
         @assert !isnothing(link.srcnode)
         @assert !isnothing(link.dstnode)
 
@@ -156,9 +162,12 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
             dst, src = src, dst
         end
 
-        (link.srcnode, link.dstnode) ∉ edge_labels(G2) || error("Duplicate candidate link detected. Did you run deduplicate_links?")
+        if (src, dst) ∈ edge_labels(G2)
+            @warn("Duplicate candidate link $i detected, skipping. This can happen when two links from adjacent spheres of influence got snapped to adjacent ends of adjacent edges.")
+            continue
+        end
 
-        G2[link.srcnode, link.dstnode] = EdgeData((
+        G2[src, dst] = EdgeData((
             link.link.geographic_length_m,
             "candidate",
             ArchGDAL.createlinestring([G2[src], G2[dst]])
