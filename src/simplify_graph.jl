@@ -6,6 +6,7 @@ has not been tested with link identification code and unexpected things may happ
 vertex removal changing the order of nodes.
 """
 function collapse_realized_graph!(G)
+    @warn "This function should only be applied to a realized graph for export, it should not be used prior to link identification."
     # collect so we're not looping over something tied to graph as we're modifying
     # the graph
     for vertex ∈ collect(labels(G))
