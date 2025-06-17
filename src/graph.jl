@@ -304,12 +304,21 @@ end
 
 Write graph `G` to GIS file `fn`.
 
-The file type is determined by extension; I recommend `.gpkg` for GeoPackage output.
+The file type is determined by extension; I recommend `.gpkg` for GeoPackage output. The format must
+support multiple layers.
 """
-function graph_to_gis(fn, G; crs=nothing)
-    gdf = DataFrame((G[t...] for t in edge_labels(G)))
+function graph_to_gis(fn, G; crs=nothing, layer_name="edges")
+    # write edges
+    gdf = DataFrame((
+        (
+            G[t...]...,
+            src_label="v$(t[1].id)",
+            tgt_label="v$(t[2].id)",
+            src_index=code_for(G, t[2]),
+            tgt_index=code_for(G, t[2])
+        ) for t in edge_labels(G)))
     metadata!(gdf, "geometrycolumns", (:geom,))
-    GeoDataFrames.write(fn, gdf, crs=crs)
+    GeoDataFrames.write(fn, gdf, crs=crs, layer_name=layer_name)
 end
 
 """
@@ -318,7 +327,16 @@ end
 Extract the nodes of graph `G` into a GeoDataFrame.
 """
 function nodes_to_gis(G)
-    gdf = DataFrame(:geom=>ArchGDAL.createpoint.([G[l] for l in labels(G)]))
+    gdf = DataFrame(
+        (
+            (
+                index=code_for(G, l),
+                label="v$(l.id)",
+                geom=ArchGDAL.createpoint(G[l])
+            )
+            for l in labels(G)
+        )
+    )
     metadata!(gdf, "geometrycolumns", :geom)
     return gdf
 end
