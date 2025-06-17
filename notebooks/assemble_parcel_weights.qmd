@@ -141,14 +141,14 @@ religious = read_sf(file.path(config$dataaxle_path, "mecklenburg_church.gpkg")) 
 civic = read_sf(file.path(config$data_path, "data", "destinations", "recreation_community_centers.gpkg")) %>%
     rename(name="Name") %>%
     mutate(type="Religious/Civic", priority="Medium", weight=MEDIUM_PRIORITY, snap_to_parcels=T) %>%
-    select(name, weight, priority, type)
+    select(name, weight, priority, type, snap_to_parcels)
 ```
 
 ```{r}
 retail = read_sf(file.path(config$dataaxle_path, "mecklenburg_retail.gpkg")) %>%
     # /5 to convert retail points to retail centers, roughly
     mutate(name=str_to_title(COMPANY), weight=MEDIUM_PRIORITY / 5, snap_to_parcels=T, priority="Medium", type="Retail") %>%
-    select(name, weight, priority, type)
+    select(name, weight, priority, type, snap_to_parcels)
 ```
 
 
@@ -186,6 +186,8 @@ point_locations = bind_rows(
 )
 
 point_locations$dest_id = 1:nrow(point_locations)
+
+stopifnot(all(!is.na(point_locations$snap_to_parcels)))
 ```
 
 ```{r}

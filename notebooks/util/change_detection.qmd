@@ -1,12 +1,12 @@
 ```{julia}
 using GeoDataFrames, DataFrames, DataFramesMeta, ArchGDAL, Plots, StatsBase
 import TOML
-CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
+CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "..", "config.toml"))
 DATA_PATH = CONFIG["data_path"]
 ```
 
 ```{julia}
-old = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links_noregionalparks.gpkg"))
+old = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links_ceus.gpkg"))
 new = GeoDataFrames.read(joinpath(DATA_PATH, "data", "candidate_missing_links.gpkg"))
 ```
 
@@ -21,10 +21,6 @@ end
 ```
 
 ```{julia}
-# j = @chain old100 begin
-#     innerjoin(new100, on=[:rank_2mi], renamecols="_old"=>"_new")
-# end
-
 j = @chain old100 begin
     innerjoin(new100, on=[:fr_edge_src, :fr_edge_tgt, :to_edge_src, :to_edge_tgt], renamecols="_old"=>"_new")
 end
@@ -42,7 +38,7 @@ end
 ```
 
 ```{julia}
-scatter(jall.score_2mi_old .+ 1, jall.score_2mi_new .+ 1, xaxis=:log, yaxis=:log, xlabel="Old", ylabel="New", legend=false)
+scatter(jall.score_2mi_old .+ 1, jall.score_2mi_new .+ 1, xaxis=:log, yaxis=:log, xlabel="Accessibility (as published)", ylabel="Accessibility (corrected)", legend=false, markersize=0.25)
 ```
 
 ```{julia}
@@ -59,9 +55,14 @@ quantile((jall.score_2mi_new .+ 1) ./ (jall.score_2mi_old .+ 1), [0.125, 0.875])
 
 ```{julia}
 # newly in top 100
-jall[(jall.rank_2mi_new .≤ 100) .≠ (jall.rank_2mi_old .≤ 100), [:rank_2mi_new, :rank_2mi_old]]
+jall[(jall.rank_2mi_new .≤ 100) .&& (jall.rank_2mi_old .> 100), [:rank_2mi_new, :rank_2mi_old]]
 ```
 
 ```{julia}
-cor(jall.score_2mi_new, jall.score_2mi_old)
+# No longer in top 100
+jall[(jall.rank_2mi_new .> 100) .&& (jall.rank_2mi_old .≤ 100), [:rank_2mi_new, :rank_2mi_old]]
+```
+
+```{julia}
+corspearman(jall.score_2mi_new, jall.score_2mi_old)
 ```
