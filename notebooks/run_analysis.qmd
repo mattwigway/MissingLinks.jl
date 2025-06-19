@@ -8,6 +8,7 @@ using GeoDataFrames, DataFrames, MissingLinks, Graphs, Mmap, ArchGDAL,
     MetaGraphsNext, CSV, Gadfly, StatsBase, DataFramesMeta
 import Humanize: digitsep
 import GDAL, TOML
+import Cairo, Fontconfig # needed to render Gadfly to PNG
 import GeoFormatTypes as GFT
 import Dates: now
 CONFIG = TOML.parsefile(joinpath(dirname(@__FILE__), "..", "config.toml"))
