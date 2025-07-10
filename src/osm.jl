@@ -22,6 +22,9 @@ function TraversalPermissionSettings()
         Set([
             "foot" => "no",
             "access" => "no"
+        ]),
+        Set([
+            "foot" => "yes"
         ])
     )
 end
@@ -76,25 +79,29 @@ function graph_from_osm(pbf, settings, projection)
     scan_ways(pbf) do way
         if is_traversable(settings, way) && length(way.nodes) > 1
             first_nid = first(way.nodes)
-            coords = []
+            coords = NTuple{2, Float64}[]
 
             for (idx, nids) in enumerate(zip(way.nodes, [way.nodes[begin + 1:end]..., -1]))
                 nid, next_nid = nids
-                push!(coords, collect(nodes[nid]))
+                push!(coords, nodes[nid])
                 # split if there is already an edge from first_nid to the next node
                 if (idx > 1 && nid ∈ intersection_nodes) || idx == length(way.nodes) ||
-                        has_key(G, (first_nid, next_nid))
+                        # TODO confirm these haskeys work as expected
+                        haskey(G, VertexID.((first_nid, next_nid))) || haskey(G, VertexID.((next_nid, first_nid))) ||
+                        next_nid == first_nid
                     # create an edge
                     geom = ArchGDAL.createlinestring(coords)
 
                     # reproject from WGS 84 to local projection
-                    geom = ArchGDAL.reproject(geom, GFT.EPSG(4326), projection)
+                    geom = ArchGDAL.reproject(geom, GFT.EPSG(4326), projection, order=:trad)
 
-                    G[first_nid, nid] = EdgeData(
-                        ArchGDAL.length(geom),
-                        has_key(way.tags, "highway") ? way.tags["highway"] : missing,
+                    nid1, nid2 = nid > first_nid ? (first_nid, nid) : (nid, first_nid)
+
+                    G[VertexID.((nid1, nid2))...] = EdgeData((
+                        ArchGDAL.geomlength(geom),
+                        haskey(way.tags, "highway") ? way.tags["highway"] : missing,
                         geom
-                    )
+                    ))
 
                     # get ready for next edge
                     first_nid = nid
