@@ -12,7 +12,8 @@ import Artifacts: @artifact_str
 import GeoInterface, ArchGDAL, ThreadsX, LibGEOS, Graphs, GeoDataFrames, GDAL
 import DataStructures: DefaultDict
 import CSV, Dates
-
+import OpenStreetMapPBF: Way, scan_nodes, scan_ways
+import GeoFormatTypes as GFT
 
 include("graph.jl")
 include("candidate_link.jl")
@@ -29,6 +30,7 @@ include("example_data.jl")
 include("realize_graph.jl")
 include("simplify_graph.jl")
 include("tntp.jl")
+include("osm.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
