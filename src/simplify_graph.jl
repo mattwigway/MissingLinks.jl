@@ -15,11 +15,11 @@ function collapse_realized_graph!(G)
             # merge the edges
             nbr1, nbr2 = neighbor_labels(G, vertex)
 
-            @assert nbr1 != vertex
+                        @assert nbr1 != vertex
             @assert nbr2 != vertex
 
             # TODO need to fix for directed graphs
-            if code_for(G, nbr2) < code_for(G, nbr1)
+            if nbr2 < nbr1
                 nbr1, nbr2 = nbr2, nbr1
             end
 
@@ -35,8 +35,8 @@ function collapse_realized_graph!(G)
 
             # the geometry should go nbr1 -> vertex -> nbr2
             # confirmed above that nbr1 < nbr2
-            g1 = code_for(G, nbr1) < code_for(G, vertex) ? e1.geom : reverse_geom(e1.geom)
-            g2 = code_for(G, vertex) < code_for(G, nbr2) ? e2.geom : reverse_geom(e2.geom)
+            g1 = nbr1 < vertex ? e1.geom : reverse_geom(e1.geom)
+            g2 = vertex < nbr2 ? e2.geom : reverse_geom(e2.geom)
 
             combined_geom = ArchGDAL.createlinestring([
                 get_xy(g1)[begin:end-1]..., # remove the end point, replace with vertex geom
