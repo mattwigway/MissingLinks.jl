@@ -314,7 +314,7 @@ function graph_to_gis(fn, G; crs=nothing, layer_name="edges")
             G[t...]...,
             src_label="v$(t[1].id)",
             tgt_label="v$(t[2].id)",
-            src_index=code_for(G, t[2]),
+            src_index=code_for(G, t[1]),
             tgt_index=code_for(G, t[2])
         ) for t in edge_labels(G)))
     metadata!(gdf, "geometrycolumns", (:geom,))
