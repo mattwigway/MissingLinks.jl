@@ -58,50 +58,96 @@ function graph_from_osm(pbf, settings, projection)
 
     # pass 2: intersection nodes
     scan_ways(pbf) do way
-        if is_traversable(settings, way)
-            for node in way.nodes
-                if node ∈ nodes_encountered
+        if is_traversable(settings, way) && length(way.nodes) > 1
+            for (node, next_node) in zip(way.nodes[begin:end-1], way.nodes[begin+1:end])
+                if node ∈ nodes_encountered || next_node == first(way.nodes)
                     push!(intersection_nodes, node)
                 else
                     push!(nodes_encountered, node)
                 end
             end
+
+            push!(intersection_nodes, first(way.nodes))
+            push!(intersection_nodes, last(way.nodes))
         end
     end
 
     # pass 3: build graph
     G = new_graph()
 
-    for node ∈ intersection_nodes
-        G[VertexID(node)] = nodes[node]
-    end
-
     scan_ways(pbf) do way
+        split_nodeid = -1
+
         if is_traversable(settings, way) && length(way.nodes) > 1
             first_nid = first(way.nodes)
             coords = NTuple{2, Float64}[]
 
-            for (idx, nids) in enumerate(zip(way.nodes, [way.nodes[begin + 1:end]..., -1]))
+            for (idx, nids) in enumerate(zip(
+                way.nodes,
+                [way.nodes[begin + 1:end]..., -1],
+                ))
                 nid, next_nid = nids
                 push!(coords, nodes[nid])
-                # split if there is already an edge from first_nid to the next node
+
                 if (idx > 1 && nid ∈ intersection_nodes) || idx == length(way.nodes) ||
-                        # TODO confirm these haskeys work as expected
-                        haskey(G, VertexID.((first_nid, next_nid))) || haskey(G, VertexID.((next_nid, first_nid))) ||
-                        next_nid == first_nid
+                        first_nid == next_nid
+
+                    nid1 = first_nid
+                    nid2 = nid
+
+                    # make sure vertices are in graph
+                    for osmid in (nid1, nid2)
+                        label = VertexID(osmid)
+
+                        if !haskey(G, label)
+                            pt = ArchGDAL.createpoint(nodes[osmid])
+                            # Project from OSM WGS 84 to desired projection
+                            ptpr = ArchGDAL.reproject(pt, GFT.EPSG(4326), projection, order=:trad)
+                            G[label] = (ArchGDAL.getx(ptpr, 0), ArchGDAL.gety(ptpr, 0))
+                        end
+                    end
+
+                    if nid1 > nid2
+                        nid1, nid2 = nid2, nid1
+                        reverse!(coords)
+                    end
+                    
                     # create an edge
                     geom = ArchGDAL.createlinestring(coords)
 
-                    # reproject from WGS 84 to local projection
+                    # reproject
                     geom = ArchGDAL.reproject(geom, GFT.EPSG(4326), projection, order=:trad)
 
-                    nid1, nid2 = nid > first_nid ? (first_nid, nid) : (nid, first_nid)
+                    if haskey(G, VertexID(nid1), VertexID(nid2))
+                        # can't have a duplicate edge, split it in the middle
+                        # we have to do this after reprojection
+                        len = ArchGDAL.geomlength(geom)
+                        g1 = geom_between(geom, 0, len / 2)
+                        g2 = geom_between(geom, len / 2, len)
+                        pt = (ArchGDAL.getx(g2, 0), ArchGDAL.gety(g2, 0))
+                        
+                        G[VertexID(split_nodeid)] = pt
 
-                    G[VertexID.((nid1, nid2))...] = EdgeData((
-                        ArchGDAL.geomlength(geom),
-                        haskey(way.tags, "highway") ? way.tags["highway"] : missing,
-                        geom
-                    ))
+                        G[VertexID(nid1), VertexID(split_nodeid)] = EdgeData((
+                            len / 2,
+                            haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
+                            reverse_geom(g1) # should always go from lower numbered vertex ID, which is always the split since it is negative (not lower numbered Graphs.jl code)
+                        ))
+
+                        G[VertexID(nid2), VertexID(split_nodeid)] = EdgeData((
+                            len / 2,
+                            haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
+                            g2
+                        ))
+
+                        split_nodeid -= 1
+                    else
+                        G[VertexID.((nid1, nid2))...] = EdgeData((
+                            ArchGDAL.geomlength(geom),
+                            haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
+                            geom
+                        ))
+                    end
 
                     # get ready for next edge
                     first_nid = nid
