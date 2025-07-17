@@ -1,5 +1,7 @@
 EdgeData = @NamedTuple{length_m::Float64, link_type::Union{String, Missing}, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
+Base.isapprox(a::EdgeData, b::EdgeData; kwargs...) = isapprox(a.length_m, b.length_m; kwargs...) && a.link_type == b.link_type && geomapprox(a.geom, b.geom; kwargs...)
+
 # if the geographic distance from two nodes is less than the snapping tolerance, we connect them
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
 # this is for automated fixing of graph errors, not for missing link identification, which uses a
@@ -9,10 +11,13 @@ const NODE_CONNECT_FACTOR = 2
 # wrap int64, avoid confusion with Int64 Graphs.jl numbers
 struct VertexID
     id::Int64
+    type::Symbol
 end
 
-Base.isless(a::VertexID, b::VertexID) = a.id < b.id
-Base.isequal(a::VertexID, b::VertexID) = a.id == b.id
+VertexID(id::Int64) = VertexID(id, :node)
+
+Base.isless(a::VertexID, b::VertexID) = a.id < b.id || (a.id == b.id && a.type < b.type)
+Base.isequal(a::VertexID, b::VertexID) = a.id == b.id && a.type == b.type
 
 function find_or_create_vertex!(G, end_node_idx, location::NTuple{2, Float64}, tolerance)
     loc = collect(location) # tuple to vector

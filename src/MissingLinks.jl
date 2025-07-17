@@ -31,6 +31,7 @@ include("realize_graph.jl")
 include("simplify_graph.jl")
 include("tntp.jl")
 include("osm.jl")
+include("link_point.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
