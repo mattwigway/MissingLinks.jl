@@ -14,6 +14,9 @@ struct VertexID
     type::Symbol
 end
 
+order_vertices(v1::VertexID, v2::VertexID) = v1 ≤ v2 : (v1, v2) : (v2, v1)
+order_vertices(vs::NTuple{2, VertexID}) = order_vertices(vs...)
+
 VertexID(id::Int64) = VertexID(id, :node)
 
 Base.isless(a::VertexID, b::VertexID) = a.id < b.id || (a.id == b.id && a.type < b.type)
