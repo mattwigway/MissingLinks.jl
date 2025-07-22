@@ -13,7 +13,7 @@ end
 function TraversalPermissionSettings()
     TraversalPermissionSettings(
         Set([
-            ("highway" .=> ["footway", "pedestrian", "track", "sidewalk", "service", "road", "steps", "path", "crossing", "residential"])...,
+            ("highway" .=> ["footway", "cycleway", "pedestrian", "track", "sidewalk", "service", "road", "steps", "path", "crossing", "residential"])...,
             ("sidewalk" .=> ["yes", "both", "left", "right"])...,
             "sidewalk:left" .=> "yes",
             "sidewalk:right" .=> "yes",
