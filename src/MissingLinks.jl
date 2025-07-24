@@ -40,5 +40,5 @@ export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, d
     graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!,
     nodes_to_gis, realize_graph, collapse_realized_graph!
 
-@compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable, partition
+@compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable, partition, merge_links
 end
