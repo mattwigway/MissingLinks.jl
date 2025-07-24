@@ -24,7 +24,8 @@ function TraversalPermissionSettings()
             "access" => "no"
         ]),
         Set([
-            # TODO should foot=yes on e.g. an arterial that doesn't have a sidewalk override that we don't want to walk there generally?
+            # TODO currently foot=yes on e.g. an arterial that doesn't have a sidewalk overrides
+            # that we don't want to walk there generally? 
             "foot" => "yes"
         ])
     )
