@@ -130,13 +130,16 @@ function graph_from_osm(pbf, settings, projection)
                         
                         G[VertexID(split_nodeid)] = pt
 
-                        G[VertexID(nid1), VertexID(split_nodeid)] = EdgeData((
+                        @assert VertexID(split_nodeid) < VertexID(nid1)
+                        @assert VertexID(split_nodeid) < VertexID(nid2)
+
+                        G[VertexID(split_nodeid), VertexID(nid1)] = EdgeData((
                             len / 2,
                             haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
                             reverse_geom(g1) # should always go from lower numbered vertex ID, which is always the split since it is negative (not lower numbered Graphs.jl code)
                         ))
 
-                        G[VertexID(nid2), VertexID(split_nodeid)] = EdgeData((
+                        G[VertexID(split_nodeid), VertexID(nid2)] = EdgeData((
                             len / 2,
                             haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
                             g2
