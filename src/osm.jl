@@ -77,9 +77,9 @@ function graph_from_osm(pbf, settings, projection)
     # pass 3: build graph
     G = new_graph()
 
-    scan_ways(pbf) do way
-        split_nodeid = -1
+    split_nodeid = -1
 
+    scan_ways(pbf) do way
         if is_traversable(settings, way) && length(way.nodes) > 1
             first_nid = first(way.nodes)
             coords = NTuple{2, Float64}[]
