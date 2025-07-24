@@ -52,5 +52,13 @@ MissingLinks.break_long_line
 MissingLinks.index_graph_nodes
 MissingLinks.find_point_on_edge
 MissingLinks.compute_link_score
+MissingLinks.split_link!
+MissingLinks.collapse_realized_graph!
+MissingLinks.get_xy
+MissingLinks.link_points!
+MissingLinks.TraversalPermissionSettings
+MissingLinks.write_tntp
+MissingLinks.realize_graph
+MissingLinks.index_candidate_links
 Base.reverse
 ```
