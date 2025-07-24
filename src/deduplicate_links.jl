@@ -64,7 +64,11 @@ being supplanted by ones more than 100m away.
 function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
     spheres_of_influence = SphereOfInfluence[]
     
-    for link in links
+    for (i, link) in enumerate(links)
+        if i % 10000 == 0
+            @info "Processed $i / $(length(links)) links"
+        end
+
         # check if this link is in a sphere of influence
         in_soi = false
         for soi in spheres_of_influence

@@ -1,5 +1,9 @@
 EdgeData = @NamedTuple{length_m::Float64, link_type::Union{String, Missing}, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
+Base.isapprox(a::EdgeData, b::EdgeData; kwargs...) = isapprox(a.length_m, b.length_m; kwargs...) &&
+    a.link_type == b.link_type &&
+    geomapprox(a.geom, b.geom; kwargs...)
+
 # if the geographic distance from two nodes is less than the snapping tolerance, we connect them
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
 # this is for automated fixing of graph errors, not for missing link identification, which uses a
@@ -9,10 +13,16 @@ const NODE_CONNECT_FACTOR = 2
 # wrap int64, avoid confusion with Int64 Graphs.jl numbers
 struct VertexID
     id::Int64
+    type::Symbol
 end
 
-Base.isless(a::VertexID, b::VertexID) = a.id < b.id
-Base.isequal(a::VertexID, b::VertexID) = a.id == b.id
+order_vertices(v1::VertexID, v2::VertexID) = v1 ≤ v2 ? (v1, v2) : (v2, v1)
+order_vertices(vs::NTuple{2, VertexID}) = order_vertices(vs...)
+
+VertexID(id::Int64) = VertexID(id, :node)
+
+Base.isless(a::VertexID, b::VertexID) = a.id < b.id || (a.id == b.id && a.type < b.type)
+Base.isequal(a::VertexID, b::VertexID) = a.id == b.id && a.type == b.type
 
 function find_or_create_vertex!(G, end_node_idx, location::NTuple{2, Float64}, tolerance)
     loc = collect(location) # tuple to vector
@@ -300,12 +310,14 @@ function graph_to_graphml(out, G; pretty=false)
 end
 
 """
-    graph_to_gis(fn, G)
+    graph_to_gis(fn, G; crs=nothing, layer_name="edges")
 
 Write graph `G` to GIS file `fn`.
 
 The file type is determined by extension; I recommend `.gpkg` for GeoPackage output. The format must
-support multiple layers.
+support multiple layers. You can specify a CRS (e.g. GFT.EPSG(32119)) so that the output has CRS information,
+which will make it easier to load into GIS. You can also specify a layer_name if you plan to have multiple
+layers in the output file.
 """
 function graph_to_gis(fn, G; crs=nothing, layer_name="edges")
     # write edges
@@ -314,7 +326,7 @@ function graph_to_gis(fn, G; crs=nothing, layer_name="edges")
             G[t...]...,
             src_label="v$(t[1].id)",
             tgt_label="v$(t[2].id)",
-            src_index=code_for(G, t[2]),
+            src_index=code_for(G, t[1]),
             tgt_index=code_for(G, t[2])
         ) for t in edge_labels(G)))
     metadata!(gdf, "geometrycolumns", (:geom,))

@@ -49,12 +49,12 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
 
     # Find edges that are nearby geographically, but far in network space
     # This is kinda slow, multithreading might help, but need to look into thread safety
-    for (i, source_edge) in enumerate(edge_labels(G))
+    # order_vertices ensures that v1 < v2 so geometry is coded correctly
+    # TODO directed graph
+    for (i, source_edge) in enumerate(order_vertices.(edge_labels(G)))
         if i % 10000 == 0
             @info "Processed $i / $(ne(G)) edges"
         end
-
-        @assert source_edge[1] ≤ source_edge[2]
 
         source_edge_geom = G[source_edge...].geom
         source_edge_length_m = G[source_edge...].length_m
@@ -73,9 +73,9 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
             )
         )
 
-        for candidate in candidates
-            # all geometries are coded with lower-numbered node first
-            @assert candidate[1] ≤ candidate[2]
+        # all geometries are coded with lower-numbered node first
+        # TODO directed graph
+        for candidate in order_vertices.(candidates)
             # first, figure out if this is even worth doing - often they are going to be connected
             # to one another fairly directly
             candidate_edge_fr = code_for(G, candidate[1])

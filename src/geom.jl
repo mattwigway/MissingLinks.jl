@@ -5,6 +5,11 @@ function gdal_to_geos(gdalgeom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString})
     LibGEOS.LineString(coords)
 end
 
+function gdal_to_geos(gdalgeom::ArchGDAL.IGeometry{ArchGDAL.wkbPoint})
+    coords = [ArchGDAL.getx(gdalgeom, 0), ArchGDAL.gety(gdalgeom, 0)]
+    LibGEOS.Point(coords)
+end
+
 geom_between(geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}, pos1, pos2) = geom_between(gdal_to_geos(geom), pos1, pos2)
 
 function geom_between(geom::LibGEOS.LineString, pos1, pos2)
@@ -129,3 +134,5 @@ function get_xy(geom)
         [ArchGDAL.getx(geom, i), ArchGDAL.gety(geom, i)]
     end
 end
+
+geomapprox(a::ArchGDAL.IGeometry, b::ArchGDAL.IGeometry; kwargs...) = all(isapprox.(get_xy(a), get_xy(b); kwargs...))
