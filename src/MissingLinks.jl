@@ -53,6 +53,7 @@ include("routing.jl")
 include("regional_access.jl")
 include("isochrone.jl")
 include("spidx.jl") # workaround for https://github.com/JuliaGeo/LibSpatialIndex.jl/pull/36
+include("partition.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
@@ -63,5 +64,6 @@ export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, d
     nodes_to_gis, realize_graph, collapse_realized_graph!, VertexID, regional_access, route_one_to_one, distance_surface,
     graph_from_osm, TraversalPermissionSettings
 
-@compat public remove_elevation!, get_example_data, write_tntp, is_traversable, index_graph_edges
+@compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable,
+    index_graph_edges, partition
 end
