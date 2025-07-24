@@ -1,6 +1,8 @@
 EdgeData = @NamedTuple{length_m::Float64, link_type::Union{String, Missing}, geom::ArchGDAL.IGeometry{ArchGDAL.wkbLineString}}
 
-Base.isapprox(a::EdgeData, b::EdgeData; kwargs...) = isapprox(a.length_m, b.length_m; kwargs...) && a.link_type == b.link_type && geomapprox(a.geom, b.geom; kwargs...)
+Base.isapprox(a::EdgeData, b::EdgeData; kwargs...) = isapprox(a.length_m, b.length_m; kwargs...) &&
+    a.link_type == b.link_type &&
+    geomapprox(a.geom, b.geom; kwargs...)
 
 # if the geographic distance from two nodes is less than the snapping tolerance, we connect them
 # if the network distance is more than NODE_CONNECT_FACTOR * the geographic distance. Note that
