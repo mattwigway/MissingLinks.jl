@@ -91,6 +91,27 @@ end
 
 Merge links from partitioned graphs Gs back into a single list referencing graph G. Return
 a tuple of (links, scores).
+
+Note: currently this returns the maximum score for each link. That is usually but not always correct. Consider a portion
+of a graph that looks like this:
+  
+    ✂
+A --✂--- B
+    ✂    |
+    ✂    |
+    ✂    |
+D---✂--- C
+    ✂
+
+A is relatively directly connected to D, but suppose where the scissor are is the edge of a partition that extends
+to the left. In the partition that extends to the left, AB and CD will be present, but BC will not as it is completely
+outside the partition. This will result in a candidate link AB->CD being identified and may score highly as it closes
+a major gap in the graph. This subgraph will be completely within the partition to the right, and we will get the correct
+link and score there, but the score may be lower or AB->CD may not be identified at all.
+
+I think what we need to do is only include links where at least one end of them is in the "main" part of the partition,
+and then increase the buffer to maxdist + max_link_dist.
+
 """
 function merge_links(G::T, Gs::Matrix{T}, links::Matrix{Vector{CandidateLink}}, scores::Matrix{Vector{S}}) where {S <: Real, T}
     size(Gs) == size(links) || error("links must have same size as Gs")
