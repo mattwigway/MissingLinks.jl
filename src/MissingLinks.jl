@@ -9,13 +9,14 @@ import Logging: @info, @warn, @error
 import EzXML: XMLDocument, ElementNode, TextNode, link!, setroot!, prettyprint
 import Compat: @compat
 import Artifacts: @artifact_str
-import GeoInterface, ArchGDAL, ThreadsX, LibGEOS, Graphs, GeoDataFrames, GDAL
+import GeoInterface, ArchGDAL, ThreadsX, LibGEOS, Graphs, GeoDataFrames, GDAL, SQLite, DBInterface
 import DataStructures: DefaultDict
 import CSV, Dates
 import OpenStreetMapPBF: Way, scan_nodes, scan_ways
 import GeoFormatTypes as GFT
 
 include("graph.jl")
+include("distance_database.jl")
 include("candidate_link.jl")
 include("dist.jl")
 include("identify_missing_links.jl")

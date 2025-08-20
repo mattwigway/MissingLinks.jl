@@ -4,34 +4,58 @@
 
 # Tested in identify_missing_links tests
 
+# NB this codes -Inf as typemax as well. that should not matter.
+function round_clamp(T, x)
+    if isfinite(x)
+        round(T, x)
+    elseif x == Inf
+        typemax(T)
+    elseif x == -Inf
+        T <: Signed ? typemin(T) : error("-Inf cannot be converted to unsigned")
+    end
+end
+
+function one_origin_distances(G, origin, queue, maxdist)
+    paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
+    dists = round_clamp.(Int64, paths.dists) # replace Inf with typemax(T)
+    insert_distances!(queue, origin, dists, maxdist)
+end
+
 """
-    fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G))
+    calculate_distances(G; maxdist=5000)
 
-Fill an already created distance matrix `mtx` with shortest-path distances based on graph `G`.
+Calculate distances  with shortest-path distances based on graph `G`.
 
-The units are the same as the underlying data, and will be rounded to the resolution of whatever the element
-type `T` of `mtx` is. We usually use UInt16 meters as these can represent quite long trips with reasonable accuracy
-while minimizing memory consumption. Using other data types is not tested.
+The units are the same as the underlying data, and will be rounded to the integers.
 
 To make this faster, you can set a maximum distance `maxdist`; for destinations beyond this distance (or destinations
 that are unreachable altogether) the matrix will contain `typemax(T)`.
 
 Will use multiple threads if Julia is started with multiple threads.
 """
-function fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
-    size(mtx) == (nv(G), nv(G)) || error("Matrix must be $(nv(G))x$(nv(G))")
-
+function calculate_distances(G; maxdist=5000, memory=false, origins=1:nv(G))
     @info "Routing with $(Threads.nthreads()) threads"
 
-    ThreadsX.mapi(origins) do origin
-        if origin % 1000 == 0
-            @info "Processed $origin / $(nv(G)) trips"
+    # initialize the matrix
+    mtx = DistanceMatrix(G; memory=memory)
+    queue = DistanceMatrixQueue(mtx)
+
+    writer_task = run(queue)
+
+    # wait for all the routing to finish
+    @sync begin
+        for i in origins
+            Threads.@spawn one_origin_distances(G, $i, queue, maxdist)
         end
-        
-        paths = dijkstra_shortest_paths(G, [origin], maxdist=maxdist)
-        # for a directed graph, this is backwards; usually would be origin is the row and dest is the column.
-        mtx[:, origin] = round.(T, min.(paths.dists, typemax(T)))
     end
+
+    # signal that we're done adding items, let the queue drain
+    drain(queue)
+
+    # wait for the writer task to finish
+    wait(writer_task)
+
+    return mtx
 end
 
 """

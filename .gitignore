@@ -6,3 +6,6 @@
 *.by_origin
 example_data
 Manifest.toml
+
+# development tests
+playground/
