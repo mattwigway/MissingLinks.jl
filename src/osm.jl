@@ -65,8 +65,9 @@ a link should be included using arbitrary Julia code.
     not_walkable_tags::Set{Tag} = Set([
             "foot" => "no",
             "access" => "no"
-        ])
-    override_walkable_tags::Set{Tag} = Set([
+            # Keeping unmarked crossings. Many are on residential streets.
+        ]),
+        Set([
             # TODO currently foot=yes on e.g. an arterial that doesn't have a sidewalk overrides
             # that we don't want to walk there generally? 
             ("foot" .=> ["yes", "designated"])...
