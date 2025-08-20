@@ -18,6 +18,7 @@ import GeoFormatTypes as GFT
 include("graph.jl")
 include("distance_database.jl")
 include("distance_queue.jl")
+include("pool.jl")
 include("candidate_link.jl")
 include("dist.jl")
 include("identify_missing_links.jl")
