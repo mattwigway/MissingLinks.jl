@@ -319,7 +319,7 @@ support multiple layers. You can specify a CRS (e.g. GFT.EPSG(32119)) so that th
 which will make it easier to load into GIS. You can also specify a layer_name if you plan to have multiple
 layers in the output file. If `update=true`, will add layers to a file rather than overwriting.
 """
-function graph_to_gis(fn, G; crs=nothing, layer_name="edges", update=false)
+function graph_to_gis(fn, G::MetaGraph; crs=nothing, layer_name="edges", update=false)
     # write edges
     gdf = DataFrame((
         (
@@ -332,6 +332,8 @@ function graph_to_gis(fn, G; crs=nothing, layer_name="edges", update=false)
     metadata!(gdf, "geometrycolumns", (:geom,))
     GeoDataFrames.write(fn, gdf, crs=crs, layer_name=layer_name, update=update)
 end
+
+graph_to_gis(fn, G::GraphPartition; kwargs...) = graph_to_gis(fn, G.G; kwargs...)
 
 """
     nodes_to_gis(G)
