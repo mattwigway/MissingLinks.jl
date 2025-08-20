@@ -33,6 +33,7 @@ import GeoFormatTypes as GFT
 import Rasters
 import ProgressMeter: @showprogress
 
+include("graph_partition.jl")
 include("graph.jl")
 include("candidate_link.jl")
 include("dist.jl")
@@ -54,6 +55,7 @@ include("regional_access.jl")
 include("isochrone.jl")
 include("spidx.jl") # workaround for https://github.com/JuliaGeo/LibSpatialIndex.jl/pull/36
 include("partition.jl")
+include("merge.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
@@ -65,5 +67,5 @@ export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, d
     graph_from_osm, TraversalPermissionSettings
 
 @compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable,
-    index_graph_edges, partition, merge_links
+    index_graph_edges, partition, partition_weights, merge_links
 end
