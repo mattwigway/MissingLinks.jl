@@ -39,7 +39,7 @@ in network distance (or disconnected entirely).
 
 `dmat` should be a distance matrix for all nodes in the graph, generally created by [`fill_distance_matrix!`](@ref fill_distance_matrix!)
 """
-function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
+function identify_potential_missing_links(G::MetaGraph, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
     @info "Indexing graph"
     sidx, edges = index_graph_edges(G)
 
@@ -152,6 +152,8 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
     return links
 end
 
+identify_potential_missing_links(G::GraphPartition, dmat, max_link_dist, min_net_dist) = identify_potential_missing_links(G.G, dmat, max_link_dist, min_net_dist)
+
 """
     links_to_gis(graph, links, pairs...)
 
@@ -161,7 +163,7 @@ for export to a GIS file.
 `pairs`` should be pairs of :col_name=>values that will be added to the output. For example, you will often
 want to add scores to your output.
 """
-function links_to_gis(G, links, pairs...)
+function links_to_gis(G::MetaGraph, links, pairs...)
     gdf = DataFrame(links)
     gdf.fr_edge_src = repr.(gdf.fr_edge_src)
     gdf.fr_edge_tgt = repr.(gdf.fr_edge_tgt)
@@ -192,3 +194,5 @@ function links_to_gis(G, links, pairs...)
 
     return gdf
 end
+
+links_to_gis(G::GraphPartition, links, pairs...) = links_to_gis(G.G, links, pairs...)
