@@ -120,6 +120,8 @@ function distances_from(m::DistanceMatrix, v::VertexID)
     # get code
     code = code_for(m.graph, v)
     DBInterface.execute(
+        # TODO I don't think this is threadsafe
+        # https://github.com/JuliaDatabases/DBInterface.jl/issues/51
         DBInterface.@prepare(() -> m.db, "SELECT dst_code, dist FROM distances WHERE src_code = ?"),
         (code,)
     ) do cursor
@@ -136,6 +138,8 @@ function distances_to(m::DistanceMatrix, v::VertexID)
     # get code
     code = code_for(m.graph, v)
     DBInterface.execute(
+        # TODO I don't think this is threadsafe
+        # https://github.com/JuliaDatabases/DBInterface.jl/issues/51
         DBInterface.@prepare(() -> m.db, "SELECT src_code, dist FROM distances WHERE dst_code = ?"),
         (code,)
     ) do cursor
