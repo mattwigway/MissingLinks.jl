@@ -55,6 +55,8 @@ function calculate_distances(G; maxdist=5000, memory=false, origins=1:nv(G))
     # wait for the writer task to finish
     wait(writer_task)
 
+    index!(mtx)
+
     return mtx
 end
 
