@@ -1,6 +1,6 @@
 # Quickstart
 
-In this page, we will quickly work through the Julia code necessary to load a network dataset, assign weights to it, and identify and score missing links. I recommend running this code in an interactive, notebook style environment; I use [Quarto](https://quarto.org) and [Visual Studio Code](https://code.visualstudio.com/). More details about all of the functions from the MissingLinks package that are used herein are available in the [API Documentation](@ref).
+In this page, we will quickly work through the Julia code necessary to load a network dataset, assign weights to it, and identify and score missing links. I recommend running this code in an interactive, notebook style environment; I use [Quarto](https://quarto.org) and [Visual Studio Code](https://code.visualstudio.com/). More details about all of the functions from the MissingLinks package that are used herein are available in the [API Documentation](@ref). To run the code, you'll need to [install a recent version of Julia](https://julialang.org/install/).
 
 ## Load packages
 
