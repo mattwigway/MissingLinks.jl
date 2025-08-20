@@ -22,6 +22,7 @@ function TraversalPermissionSettings()
         Set([
             "foot" => "no",
             "access" => "no"
+            # Keeping unmarked crossings. Many are on residential streets.
         ]),
         Set([
             # TODO currently foot=yes on e.g. an arterial that doesn't have a sidewalk overrides
