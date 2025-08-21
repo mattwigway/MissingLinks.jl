@@ -24,7 +24,7 @@ function run(q::DistanceMatrixQueue)
     t = Threads.@spawn _run_task(q)
     # fail fast if writer fails
     # Note this is not working
-    bind(q.channel, t)
+    #bind(q.channel, t)
     return t
 end
 

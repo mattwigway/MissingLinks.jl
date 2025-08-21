@@ -102,10 +102,11 @@ function score_links(decay_function, links, dmat, origin_weights, dest_weights, 
     # threading doesn't seem to make this faster in my toy example, and Julia peaks at 190% CPU usage.
     # Probably SQLite is in serial mode.
     link_scores = ThreadsX.mapi(enumerate(links)) do (i, link)
-        if i % 1 == 0
+        if i % 100 == 0
             @info "Scored $i / $(length(links)) links"
         end
         # compute in both directions
+        # and add together
         compute_link_score(link, p, origin_weights, dest_weights, decay_function, decay_cutoff_m) +
             compute_link_score(reverse(link), p, origin_weights, dest_weights, decay_function, decay_cutoff_m)
     end
