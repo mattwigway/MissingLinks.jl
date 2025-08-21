@@ -24,7 +24,7 @@ end
 """
     calculate_distances(G; maxdist=5000)
 
-Calculate distances  with shortest-path distances based on graph `G`.
+Calculate distances with shortest-path distances based on graph `G`.
 
 The units are the same as the underlying data, and will be rounded to the integers.
 
