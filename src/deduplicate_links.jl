@@ -1,6 +1,6 @@
 
 mutable struct SphereOfInfluence
-    nodes::Vector{Int64}
+    nodes::Vector{VertexID}
     original_link::CandidateLink
     links::Vector{CandidateLink}
 end
@@ -61,7 +61,7 @@ links in the two spheres of influence may be very similar ones in between the or
 You could iterate the algorithm if you wanted to to prevent this, but this could result in links
 being supplanted by ones more than 100m away.
 """
-function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius)
+function deduplicate_links(links::AbstractVector{CandidateLink}, dmat, sphere_of_influence_radius)
     spheres_of_influence = SphereOfInfluence[]
     
     for (i, link) in enumerate(links)
@@ -81,21 +81,21 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
                     # we don't know whether the links face the same direction or not
                     (
                         # links face same direction: start near start, end near end
-                        compute_net_distance(dmat,
+                        coalesce(compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end) ≤ sphere_of_influence_radius &&
-                        compute_net_distance(dmat,
+                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end), typemax(Int64)) ≤ sphere_of_influence_radius &&
+                        coalesce(compute_net_distance(dmat,
                             link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius
+                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end), typemax(Int64)) ≤ sphere_of_influence_radius
                     ) ||
                     (
                         # links face opposite directions: start near end, end near start
-                        compute_net_distance(dmat,
+                        coalesce(compute_net_distance(dmat,
                             link.fr_edge_src, link.fr_edge_tgt, link.fr_dist_from_start, link.fr_dist_to_end,
-                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end) ≤ sphere_of_influence_radius &&
-                        compute_net_distance(dmat,
+                            soi.original_link.to_edge_src, soi.original_link.to_edge_tgt, soi.original_link.to_dist_from_start, soi.original_link.to_dist_to_end), typemax(Int64)) ≤ sphere_of_influence_radius &&
+                        coalesce(compute_net_distance(dmat,
                             link.to_edge_src, link.to_edge_tgt, link.to_dist_from_start, link.to_dist_to_end,
-                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end) ≤ sphere_of_influence_radius
+                            soi.original_link.fr_edge_src, soi.original_link.fr_edge_tgt, soi.original_link.fr_dist_from_start, soi.original_link.fr_dist_to_end), typemax(Int64)) ≤ sphere_of_influence_radius
                     )
                 )
                 # note: order matters here. it is possible for a link to be in two spheres of influence,
@@ -110,11 +110,15 @@ function deduplicate_links(links::AbstractVector{<:CandidateLink{<:Any}}, dmat, 
 
         if !in_soi
             # not in a sphere of influence, create one - everything near either end
+            # we could bound this a little better - use distance from original link, not ends
+            # of edges of original link. shouldn't change results due to check above.
             nodes = unique(vcat(
-                findall(dmat[:, link.fr_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.fr_edge_tgt] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_src] .< sphere_of_influence_radius),
-                findall(dmat[:, link.to_edge_tgt] .< sphere_of_influence_radius)
+                # distance filtering could happen in SQL
+                # TODO directed graph
+                map(first, filter(x -> x[2] < sphere_of_influence_radius, distances_to(dmat, link.fr_edge_src))),
+                map(first, filter(x -> x[2] < sphere_of_influence_radius, distances_to(dmat, link.fr_edge_tgt))),
+                map(first, filter(x -> x[2] < sphere_of_influence_radius, distances_to(dmat, link.to_edge_src))),
+                map(first, filter(x -> x[2] < sphere_of_influence_radius, distances_to(dmat, link.fr_edge_tgt)))
             ))
 
             push!(spheres_of_influence, SphereOfInfluence(nodes, link, [link]))

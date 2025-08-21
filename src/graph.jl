@@ -22,6 +22,7 @@ order_vertices(vs::NTuple{2, VertexID}) = order_vertices(vs...)
 VertexID(id::Int64) = VertexID(id, :node)
 
 Base.isless(a::VertexID, b::VertexID) = a.id < b.id || (a.id == b.id && a.type < b.type)
+Base.hash(a::VertexID, h::UInt64) = hash(a.id, hash(a.type, hash(:VertexID, h)))
 Base.isequal(a::VertexID, b::VertexID) = a.id == b.id && a.type == b.type
 
 function find_or_create_vertex!(G, end_node_idx, location::NTuple{2, Float64}, tolerance)

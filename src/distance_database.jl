@@ -2,6 +2,24 @@ const FROM_QUERY = "SELECT dst_code, dist FROM distances WHERE src_code = :src_c
 const TO_QUERY = "SELECT src_code, dist FROM distances WHERE dst_code = :dst_code"
 const BOTH_QUERY = "SELECT dist FROM distances WHERE src_code = :src_code AND dst_code = :dst_code"
 
+# used in scoring to find both ends of a link - this is the TO version, each returned row has a vertex ID
+# and distances from that vertex ID to both requested nodes
+const TO_QUERY_DUAL = "
+    SELECT COALESCE(n1.src_code, n2.src_code) AS src_code, n1.dist AS dist1, n2.dist AS dist2
+    FROM distances n1
+    -- FULL OUTER JOIN in case one or the other is unreachable
+    FULL OUTER JOIN distances n2 ON n1.src_code = n2.src_code
+    WHERE n1.dst_code = :node1 AND n2.dst_code = :node2
+"
+
+# FROM version of above
+const FROM_QUERY_DUAL = "
+    SELECT COALESCE(n1.dst_code, n2.dst_code) AS dst_code, n1.dist AS dist1, n2.dist AS dist2
+    FROM distances n1
+    FULL OUTER JOIN distances n2 ON n1.dst_code = n2.dst_code
+    WHERE n1.src_code = :node1 AND n2.src_code = :node2
+"
+
 # should this subclass matrix?
 @kwdef struct DistanceMatrix{G <: MetaGraph}
     graph::MetaGraph
@@ -10,6 +28,8 @@ const BOTH_QUERY = "SELECT dist FROM distances WHERE src_code = :src_code AND ds
     from_query::SQLite.Stmt
     to_query::SQLite.Stmt
     both_query::SQLite.Stmt
+    from_query_dual::SQLite.Stmt
+    to_query_dual::SQLite.Stmt
 end
 
 """
@@ -42,7 +62,9 @@ function DistanceMatrix(graph::G, file; initialize=false) where G <: MetaGraph
         db=db,
         from_query=DBInterface.prepare(db, FROM_QUERY),
         to_query=DBInterface.prepare(db, TO_QUERY),
-        both_query=DBInterface.prepare(db, BOTH_QUERY)
+        both_query=DBInterface.prepare(db, BOTH_QUERY),
+        from_query_dual=DBInterface.prepare(db, FROM_QUERY_DUAL),
+        to_query_dual=DBInterface.prepare(db, TO_QUERY_DUAL)
     )
 end
 
@@ -154,7 +176,7 @@ end
 
 Return an iterator of VertexID, Int64 of all vertices reachable from v.
 """
-function distances_from(m::DistanceMatrix, v::VertexID)::Tuple{VertexID, Int64}
+function distances_from(m::DistanceMatrix, v::VertexID)
     # get code
     code = code_for(m.graph, v)
     DBInterface.execute(m.from_query, (src_code=code,)) do cursor
@@ -163,11 +185,41 @@ function distances_from(m::DistanceMatrix, v::VertexID)::Tuple{VertexID, Int64}
 end
 
 """
+    distances_to(matrix, v1::VertexID, v2::VertexID)
+
+Return an iterator of VertexID, Union{Int64, Missing}, Union{Int64, Missing} of all vertices that can reach v1 or v2.
+The first item is the vertex ID, the second is the distance to v1, and the third is the distance to v2.
+One of the distances (but not both) may be `missing`.
+"""
+function distances_to(m::DistanceMatrix, v1::VertexID, v2::VertexID)::Vector{Tuple{VertexID, Union{Int64, Missing}, Union{Int64, Missing}}}
+    code1 = code_for(m.graph, v1)
+    code2 = code_for(m.graph, v2)
+    DBInterface.execute(m.to_query_dual, (node1=code1, node2=code2)) do cursor
+        collect(map(row -> (label_for(m.graph, row.src_code), row.dist1, row.dist2), cursor))
+    end
+end
+
+"""
+    distances_from(matrix, v1::VertexID, v2::VertexID)
+
+Return an iterator of VertexID, Union{Int64, Missing}, Union{Int64, Missing} of all vertices that are reachable from v1 or v2.
+The first item is the vertex ID, the second is the distance to v1, and the third is the distance to v2.
+One of the distances (but not both) may be `missing`.
+"""
+function distances_from(m::DistanceMatrix, v1::VertexID, v2::VertexID)::Vector{Tuple{VertexID, Union{Int64, Missing}, Union{Int64, Missing}}}
+    code1 = code_for(m.graph, v1)
+    code2 = code_for(m.graph, v2)
+    DBInterface.execute(m.from_query_dual, (node1=code1, node2=code2)) do cursor
+        collect(map(row -> (label_for(m.graph, row.dst_code), row.dist1, row.dist2), cursor))
+    end
+end
+
+"""
     distances_to(matrix, v::VertexID)
 
 Return an iterator of VertexID, Int64 of all vertices that can reach v.
 """
-function distances_to(m::DistanceMatrix, v::VertexID)::Tuple{VertexID, Int64}
+function distances_to(m::DistanceMatrix, v::VertexID)
     code = code_for(m.graph, v)
     DBInterface.execute(m.to_query, (dst_code=code,)) do cursor
         collect(map(row -> (label_for(m.graph, row.src_code), row.dist), cursor))
@@ -185,7 +237,7 @@ function Base.getindex(m::DistanceMatrix, from::VertexID, to::VertexID)
 
         row, next = itr
         # have to do this before next iterate, row will get updated to missing
-        dist = row.dist
+        dist = row.dist::Int64
         isnothing(iterate(cursor, next)) || error("Multiple rows returned")
         dist
     end

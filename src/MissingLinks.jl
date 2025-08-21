@@ -35,11 +35,12 @@ include("simplify_graph.jl")
 include("tntp.jl")
 include("osm.jl")
 include("link_point.jl")
+include("util.jl")
 
 
 export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
     score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area,
-    graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!,
+    graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, calculate_distances,
     nodes_to_gis, realize_graph, collapse_realized_graph!
 
 @compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable
