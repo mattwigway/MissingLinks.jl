@@ -33,11 +33,11 @@ that are unreachable altogether) the matrix will contain `typemax(T)`.
 
 Will use multiple threads if Julia is started with multiple threads.
 """
-function calculate_distances(G; maxdist=5000, memory=false, origins=1:nv(G))
+function calculate_distances(G; maxdist=5000, origins=1:nv(G))
     @info "Routing with $(Threads.nthreads()) threads"
 
     # initialize the matrix
-    mtx = DistanceMatrix(G; memory=memory)
+    mtx = DistanceMatrix(G)
     queue = DistanceMatrixQueue(mtx)
 
     writer_task = run(queue)

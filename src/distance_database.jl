@@ -1,46 +1,70 @@
-# should this subclass matrix?
-struct DistanceMatrix{G <: MetaGraph}
-    graph::MetaGraph
-    db::SQLite.DB
+const FROM_QUERY = "SELECT dst_code, dist FROM distances WHERE src_code = :src_code"
+const TO_QUERY = "SELECT src_code, dist FROM distances WHERE dst_code = :dst_code"
+const BOTH_QUERY = "SELECT dist FROM distances WHERE src_code = :src_code AND dst_code = :dst_code"
 
-    function DistanceMatrix(graph::G, db::SQLite.DB) where G
-        mtx = new{G}(graph, db)
-        initialize(mtx)
-        return mtx
-    end
+# should this subclass matrix?
+@kwdef struct DistanceMatrix{G <: MetaGraph}
+    graph::MetaGraph
+    file::String
+    db::SQLite.DB
+    from_query::SQLite.Stmt
+    to_query::SQLite.Stmt
+    both_query::SQLite.Stmt
 end
 
 """
-    DistanceMatrix(graph; memory=false)
+    DistanceMatrix(graph)
 
-Initialize a new distance matrix. If you have a lot of memory, set memory=true for best performance.
-Otherwise set memory=false for lowest memory consumption.
+Initialize a new distance matrix.
 
 Note that DistanceMatrices are not thread safe _for either reading or writing_. For writing, see
 [DistanceMatrixQueue](@ref) for a thread-safe writing method. For reading, use [fork()](@ref) to create
 multiple independent connections, and then use a RevolvingPool to share connections safely.
 """
-function DistanceMatrix(graph; memory=false)
-    db = if memory
-        SQLite.DB()
-    else
-        dbfile, io = mktemp()
-        close(io)
-        SQLite.DB(dbfile)
+function DistanceMatrix(graph::G) where G <: MetaGraph
+    dbfile, io = mktemp()
+    close(io)
+
+    mtx = DistanceMatrix(graph, dbfile; initialize=true)
+    return mtx
+end
+
+function DistanceMatrix(graph::G, file; initialize=false) where G <: MetaGraph
+    db = SQLite.DB(file)
+
+    if initialize
+        initialize!(db)
     end
 
-    return DistanceMatrix(graph, db)
+    DistanceMatrix{G}(;
+        graph=graph,
+        file=file,
+        db=db,
+        from_query=DBInterface.prepare(db, FROM_QUERY),
+        to_query=DBInterface.prepare(db, TO_QUERY),
+        both_query=DBInterface.prepare(db, BOTH_QUERY)
+    )
 end
 
 """
-    initialize(mtx)
+    fork(mtx)
+
+Create another connection to the same distance matrix, used for safe multithreaded access
+in conjunction with RevolvingPool.
+"""
+function fork(mtx::DistanceMatrix)
+    DistanceMatrix(mtx.graph, mtx.file; initialize=false)
+end
+
+"""
+    initialize!(mtx)
 
 Initializes the database with the distance matrix table.
 """
-function initialize(mtx::DistanceMatrix)
+function initialize!(db)
     # check if table exists already and give a useful error if it does
     # https://stackoverflow.com/questions/1601151
-    DBInterface.execute(mtx.db, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'distances'") do result
+    DBInterface.execute(db, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'distances'") do result
         isnothing(iterate(result)) || error("Cache file is stale; table $TABLE_NAME already exists!")
     end
 
@@ -51,7 +75,7 @@ function initialize(mtx::DistanceMatrix)
     #DBInterface.execute(identity, mtx.db, "PRAGMA synchronous = OFF")
 
     # or perhaps this should use labels? but that's a lot of strings
-    DBInterface.execute(identity, mtx.db, "CREATE TABLE distances (src_code INTEGER, dst_code INTEGER, dist INTEGER) STRICT")
+    DBInterface.execute(identity, db, "CREATE TABLE distances (src_code INTEGER, dst_code INTEGER, dist INTEGER) STRICT")
 end
 
 """
@@ -119,12 +143,7 @@ Return an iterator of VertexID, Int64 of all vertices reachable from v.
 function distances_from(m::DistanceMatrix, v::VertexID)
     # get code
     code = code_for(m.graph, v)
-    DBInterface.execute(
-        # TODO I don't think this is threadsafe
-        # https://github.com/JuliaDatabases/DBInterface.jl/issues/51
-        DBInterface.@prepare(() -> m.db, "SELECT dst_code, dist FROM distances WHERE src_code = ?"),
-        (code,)
-    ) do cursor
+    DBInterface.execute(m.from_query, (src_code=code,)) do cursor
         collect(map(row -> (label_for(m.graph, row.dst_code), row.dist), cursor))
     end
 end
@@ -137,12 +156,28 @@ Return an iterator of VertexID, Int64 of all vertices that can reach v.
 function distances_to(m::DistanceMatrix, v::VertexID)
     # get code
     code = code_for(m.graph, v)
-    DBInterface.execute(
-        # TODO I don't think this is threadsafe
-        # https://github.com/JuliaDatabases/DBInterface.jl/issues/51
-        DBInterface.@prepare(() -> m.db, "SELECT src_code, dist FROM distances WHERE dst_code = ?"),
-        (code,)
-    ) do cursor
+    DBInterface.execute(m.to_query, (dst_code=code,)) do cursor
         collect(map(row -> (label_for(m.graph, row.src_code), row.dist), cursor))
+    end
+end
+
+function Base.getindex(m::DistanceMatrix, from::VertexID, to::VertexID)
+    DBInterface.execute(m.both_query, (src_code=code_for(m.graph, from), dst_code=code_for(m.graph, to))) do cursor
+        row, next = iterate(cursor)
+        # have to do this before next iterate, row will get updated to missing
+        dist = row.dist
+        isnothing(iterate(cursor, next)) || error("Multiple rows returned")
+        dist
+    end
+end
+
+# this form is deprecated, should do everything with vertexids
+function Base.getindex(m::DistanceMatrix, from::Int64, to::Int64)
+    DBInterface.execute(m.both_query, (src_code=from, dst_code=to)) do cursor
+        row, next = iterate(cursor)
+        # have to do this before next iterate, row will get updated to missing
+        dist = row.dist
+        isnothing(iterate(cursor, next)) || error("Multiple rows returned")
+        dist
     end
 end
