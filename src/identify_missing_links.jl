@@ -39,7 +39,7 @@ in network distance (or disconnected entirely).
 
 `dmat` should be a distance matrix for all nodes in the graph, generally created by [`fill_distance_matrix!`](@ref fill_distance_matrix!)
 """
-function identify_potential_missing_links(G, dmat::DistanceMatrix, max_link_dist, min_net_dist) where T
+function identify_potential_missing_links(G, dmat::DistanceMatrix, max_link_dist, min_net_dist)
     @info "Indexing graph"
     sidx, edges = index_graph_edges(G)
 
