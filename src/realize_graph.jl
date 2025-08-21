@@ -19,19 +19,19 @@ the realized graph should also work).
 The RealizedCandidateLinks in src and dest are references to those in links, so modifying
 a link in any of these will modify it in all of them.
 """
-function index_candidate_links(G, links::Vector{CandidateLink})
+function index_candidate_links(links::Vector{CandidateLink})
     realized = [RealizedCandidateLink(link, nothing, nothing) for link ∈ links]
 
     src = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink}}(Vector{RealizedCandidateLink})
     dest = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink}}(Vector{RealizedCandidateLink})
 
     for link in realized
-        v1 = label_for(G, link.link.fr_edge_src)
-        v2 = label_for(G, link.link.fr_edge_tgt)
+        v1 = link.link.fr_edge_src
+        v2 = link.link.fr_edge_tgt
         push!(src[(v1, v2)], link)
 
-        v3 = label_for(G, link.link.to_edge_src)
-        v4 = label_for(G, link.link.to_edge_tgt)
+        v3 = link.link.to_edge_src
+        v4 = link.link.to_edge_tgt
         push!(dest[(v3, v4)], link)
     end
 
@@ -60,7 +60,7 @@ function realize_graph(G, links::Vector{CandidateLink})
     end
 
     # Pass 2: index candidate links by edge
-    realized_links = index_candidate_links(G, links)
+    realized_links = index_candidate_links(links)
 
     # Step 3: loop over edges
 
@@ -87,9 +87,9 @@ function realize_graph(G, links::Vector{CandidateLink})
 
         # create nodes
         nodes = map(breakpoints) do breakpoint
-            if breakpoint == zero(T)
+            if breakpoint == 0
                 v1
-            elseif breakpoint == round(T, G[v1, v2].length_m)
+            elseif breakpoint == round(Int64, G[v1, v2].length_m)
                 v2
             else
                 new_id = VertexID(next_vertexid)
@@ -119,12 +119,12 @@ function realize_graph(G, links::Vector{CandidateLink})
         # add original links to graph
         if isempty(nodes) || first(nodes) ≠ v1
             pushfirst!(nodes, v1)
-            pushfirst!(breakpoints, zero(T))
+            pushfirst!(breakpoints, 0)
         end
 
         if last(nodes) ≠ v2
             push!(nodes, v2)
-            push!(breakpoints, round(T, G[v1, v2].length_m))
+            push!(breakpoints, round(Int64, G[v1, v2].length_m))
         end
 
         node_and_dist = collect(zip(nodes, breakpoints))

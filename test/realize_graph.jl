@@ -119,12 +119,12 @@
         x1 = c[v1][1]
         x2 = c[v3][1]
         CandidateLink(
-            code_for(G, v[v1]),
-            code_for(G, v[v2]),
+            v[v1],
+            v[v2],
             abs(y - c[v1][2]),
             abs(c[v2][2] - y),
-            code_for(G, v[v3]),
-            code_for(G, v[v4]),
+            v[v3],
+            v[v4],
             abs(y - c[v3][2]),
             abs(c[v4][2] - y),
             abs(x2 - x1),
