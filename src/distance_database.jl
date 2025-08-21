@@ -1,3 +1,4 @@
+const INSERT_QUERY = "INSERT INTO distances (src_code, dst_code, dist) VALUES (:src_code, :dst_code, :dist)"
 const FROM_QUERY = "SELECT dst_code, dist FROM distances WHERE src_code = :src_code"
 const TO_QUERY = "SELECT src_code, dist FROM distances WHERE dst_code = :dst_code"
 const BOTH_QUERY = "SELECT dist FROM distances WHERE src_code = :src_code AND dst_code = :dst_code"
@@ -25,6 +26,7 @@ const FROM_QUERY_DUAL = "
     graph::MetaGraph
     file::String
     db::SQLite.DB
+    insert_query::SQLite.Stmt
     from_query::SQLite.Stmt
     to_query::SQLite.Stmt
     both_query::SQLite.Stmt
@@ -60,6 +62,7 @@ function DistanceMatrix(graph::G, file; initialize=false) where G <: MetaGraph
         graph=graph,
         file=file,
         db=db,
+        insert_query=DBInterface.prepare(db, INSERT_QUERY),
         from_query=DBInterface.prepare(db, FROM_QUERY),
         to_query=DBInterface.prepare(db, TO_QUERY),
         both_query=DBInterface.prepare(db, BOTH_QUERY),
@@ -129,8 +132,8 @@ function insert_distances!(mtx::DistanceMatrix, src_code::Int64, distances::Abst
             # why does @prepare use a function?
             DBInterface.execute(
                 identity,
-                DBInterface.@prepare(() -> mtx.db, "INSERT INTO distances (src_code, dst_code, dist) VALUES (?, ?, ?)"),
-                (src_code, tgt, dist)
+                mtx.insert_query,
+                (src_code=src_code, dst_code=tgt, dist=dist)
             )
         end
     end
