@@ -17,7 +17,7 @@ function with(f, pool::RevolvingPool)
     return val
 end
 
-function initialize(f, pool::RevolvingPool)
+function initialize!(f, pool::RevolvingPool)
     for _ in 1:pool.size
         put!(pool.channel, f())
     end

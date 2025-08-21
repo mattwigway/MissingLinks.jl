@@ -118,7 +118,7 @@
     function l(v1, v2, v3, v4, y)
         x1 = c[v1][1]
         x2 = c[v3][1]
-        CandidateLink{UInt16}(
+        CandidateLink(
             code_for(G, v[v1]),
             code_for(G, v[v2]),
             abs(y - c[v1][2]),
@@ -128,7 +128,7 @@
             abs(y - c[v3][2]),
             abs(c[v4][2] - y),
             abs(x2 - x1),
-            typemax(UInt16) # network length: not relevant to test
+            missing # network length: not relevant to test
         )
     end
 

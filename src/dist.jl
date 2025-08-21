@@ -64,7 +64,7 @@ end
 Compute the network distance between the two points on links, by computing
 between from ends and adding fractions of the edge.
 """
-function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
+function compute_net_distance(dmat::DistanceMatrix, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist)
     if sfr == dfr && sto == dto
         # same edge
         # NB: we could remove the base.checked_sub here if perf is poor, as this should never overflow, this is a
@@ -78,15 +78,17 @@ function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, d
         # get the minimum distance, all possible combinations of from and to
         # there are 8 comparisons because this is not assuming undirectedness (though
         # other places in the code still do).
-        min(
-            add_unless_typemax(dmat[sfr, dfr], sdist + ddist),
-            add_unless_typemax(dmat[sto, dfr], senddist + ddist),
-            add_unless_typemax(dmat[sfr, dto], sdist + denddist),
-            add_unless_typemax(dmat[sto, dto], senddist + denddist),
-            add_unless_typemax(dmat[dfr, sfr], ddist + sdist),
-            add_unless_typemax(dmat[dto, sfr], denddist + sdist),
-            add_unless_typemax(dmat[dfr, sto], ddist + senddist),
-            add_unless_typemax(dmat[dto, sto], denddist + senddist)
+        distances = (
+            dmat[sfr, dfr] + sdist + ddist,
+            dmat[sto, dfr] + senddist + ddist,
+            dmat[sfr, dto] + sdist + denddist,
+            dmat[sto, dto] + senddist + denddist,
+            dmat[dfr, sfr] + ddist + sdist,
+            dmat[dto, sfr] + denddist + sdist,
+            dmat[dfr, sto] + ddist + senddist,
+            dmat[dto, sto] + denddist + senddist
         )
+
+        all(ismissing.(distances)) ? missing : minimum(skipmissing(distances))
     end
 end

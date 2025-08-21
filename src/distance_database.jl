@@ -57,6 +57,20 @@ function fork(mtx::DistanceMatrix)
 end
 
 """
+    pool(mtx, size=Threads.nthreads() * 2)
+
+Create a [RevolvingPool](@ref) of this DistanceMatrix, for use in multithreaded applications.
+Each matrix in the pool shares the same data, and can be used by one thread at a time. DistanceMatrices
+are cheap; to avoid blocking, I recommend making the pool twice the number of concurrent tasks that may be
+running.
+"""
+function pool(mtx::DistanceMatrix, size=Threads.nthreads() * 2)
+    p = RevolvingPool{DistanceMatrix}(size)
+    initialize!(() -> fork(mtx), p)
+    return p
+end
+
+"""
     initialize!(mtx)
 
 Initializes the database with the distance matrix table.
@@ -140,7 +154,7 @@ end
 
 Return an iterator of VertexID, Int64 of all vertices reachable from v.
 """
-function distances_from(m::DistanceMatrix, v::VertexID)
+function distances_from(m::DistanceMatrix, v::VertexID)::Tuple{VertexID, Int64}
     # get code
     code = code_for(m.graph, v)
     DBInterface.execute(m.from_query, (src_code=code,)) do cursor
@@ -153,8 +167,7 @@ end
 
 Return an iterator of VertexID, Int64 of all vertices that can reach v.
 """
-function distances_to(m::DistanceMatrix, v::VertexID)
-    # get code
+function distances_to(m::DistanceMatrix, v::VertexID)::Tuple{VertexID, Int64}
     code = code_for(m.graph, v)
     DBInterface.execute(m.to_query, (dst_code=code,)) do cursor
         collect(map(row -> (label_for(m.graph, row.src_code), row.dist), cursor))
@@ -163,18 +176,14 @@ end
 
 function Base.getindex(m::DistanceMatrix, from::VertexID, to::VertexID)
     DBInterface.execute(m.both_query, (src_code=code_for(m.graph, from), dst_code=code_for(m.graph, to))) do cursor
-        row, next = iterate(cursor)
-        # have to do this before next iterate, row will get updated to missing
-        dist = row.dist
-        isnothing(iterate(cursor, next)) || error("Multiple rows returned")
-        dist
-    end
-end
+        itr = iterate(cursor)
 
-# this form is deprecated, should do everything with vertexids
-function Base.getindex(m::DistanceMatrix, from::Int64, to::Int64)
-    DBInterface.execute(m.both_query, (src_code=from, dst_code=to)) do cursor
-        row, next = iterate(cursor)
+        if isnothing(itr)
+            # not found
+            return missing
+        end
+
+        row, next = itr
         # have to do this before next iterate, row will get updated to missing
         dist = row.dist
         isnothing(iterate(cursor, next)) || error("Multiple rows returned")

@@ -39,13 +39,13 @@ in network distance (or disconnected entirely).
 
 `dmat` should be a distance matrix for all nodes in the graph, generally created by [`fill_distance_matrix!`](@ref fill_distance_matrix!)
 """
-function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min_net_dist) where T
+function identify_potential_missing_links(G, dmat::DistanceMatrix, max_link_dist, min_net_dist) where T
     @info "Indexing graph"
     sidx, edges = index_graph_edges(G)
 
     @info "Searching for candidate links"
 
-    links = Vector{CandidateLink{T}}()
+    links = Vector{CandidateLink}()
 
     # Find edges that are nearby geographically, but far in network space
     # This is kinda slow, multithreading might help, but need to look into thread safety
@@ -59,8 +59,7 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
         source_edge_geom = G[source_edge...].geom
         source_edge_length_m = G[source_edge...].length_m
         source_edge_envelope = ArchGDAL.envelope(source_edge_geom)
-        source_edge_fr = code_for(G, source_edge[1])
-        source_edge_to = code_for(G, source_edge[2])
+        source_edge_fr, source_edge_to = source_edge
 
         # find other edges whose bounding boxes intersect the source_edge edge bounding box
         # expanded by the max_link_dist
@@ -78,17 +77,13 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
         for candidate in order_vertices.(candidates)
             # first, figure out if this is even worth doing - often they are going to be connected
             # to one another fairly directly
-            candidate_edge_fr = code_for(G, candidate[1])
-            candidate_edge_to = code_for(G, candidate[2])
+            candidate_edge_fr, candidate_edge_to = candidate
             candidate_edge_length_m = G[candidate...].length_m
 
             # an upper bound on the net dist is the shortest distance from either end to either other
             # end plus the total length of both edges (if the closest points geographically
             # happened to be opposite the closest points topologically).
-
-            # To avoid overflow, instead of adding the lengths here, we subtract them from the max
-            # in the next line.
-            upper_bound_net_dist = min(
+            distances = (
                 dmat[source_edge_fr, candidate_edge_to],
                 dmat[source_edge_to, candidate_edge_to],
                 dmat[source_edge_fr, candidate_edge_fr],
@@ -99,13 +94,7 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                 dmat[candidate_edge_fr, source_edge_fr]
             )
             
-            # we do the subtraction here instead of adding above to avoid overflow
-            # if upper_bound_net_dist is typemax(UInt16)
-            # the edge lengths are Float64, so this should not overflow as promotion will happen
-            # Furthermore, even if types were not promoted, this cannot underflow with the default parameters,
-            # as min_net_dist is 1000m and edges can be no longer than 250m.
-            # doing a checked subtract here would not be the world's worst idea
-            if upper_bound_net_dist > min_net_dist - source_edge_length_m - candidate_edge_length_m
+            if all(ismissing.(distances)) || minimum(skipmissing(distances)) + source_edge_length_m + candidate_edge_length_m > min_net_dist
                 candidate_edge_geom = G[candidate...].geom
                 # we might have a missing link. Calculate geographic distance.
                 geo_distance = LibGEOS.distance(source_edge_geom, candidate_edge_geom)
@@ -120,29 +109,28 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                     source_dist = LibGEOS.project(source_edge_geom, point_on_source)
                     candidate_dist = LibGEOS.project(candidate_edge_geom, point_on_candidate)
 
-                    # calculate the distances in UInt16 units
-                    source_dist_from_start = round(T, source_dist)
-                    source_dist_to_end = round(T, source_edge_length_m) - source_dist_from_start
+                    source_dist_from_start = round(Int64, source_dist)
+                    source_dist_to_end = round(Int64, source_edge_length_m) - source_dist_from_start
 
-                    candidate_dist_from_start = round(T, candidate_dist)
-                    candidate_dist_to_end = round(T, candidate_edge_length_m) - candidate_dist_from_start
+                    candidate_dist_from_start = round(Int64, candidate_dist)
+                    candidate_dist_to_end = round(Int64, candidate_edge_length_m) - candidate_dist_from_start
 
                     # calculate the actual network distance from these points
                     net_dist_m = compute_net_distance(dmat, source_edge_fr, source_edge_to, source_dist_from_start, source_dist_to_end,
                         candidate_edge_fr, candidate_edge_to, candidate_dist_from_start, candidate_dist_to_end)
 
                     # re-check net dist now that we have an actual value, not an upper bound
-                    if net_dist_m > min_net_dist
-                        push!(links, CandidateLink{T}(
-                            code_for(G, source_edge[1]),
-                            code_for(G, source_edge[2]),
+                    if ismissing(net_dist_m) || net_dist_m > min_net_dist
+                        push!(links, CandidateLink(
+                            source_edge[1],
+                            source_edge[2],
                             source_dist_from_start,
                             source_dist_to_end,
-                            code_for(G, candidate[1]),
-                            code_for(G, candidate[2]),
+                            candidate[1],
+                            candidate[2],
                             candidate_dist_from_start,
                             candidate_dist_to_end,
-                            round(T, length_m),
+                            round(Int64, length_m),
                             net_dist_m
                         ))
                     end

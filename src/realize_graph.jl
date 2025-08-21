@@ -1,5 +1,5 @@
-mutable struct RealizedCandidateLink{T}
-    link::CandidateLink{T}
+mutable struct RealizedCandidateLink
+    link::CandidateLink
     srcnode::Union{VertexID, Nothing}
     dstnode::Union{VertexID, Nothing}
 end
@@ -19,11 +19,11 @@ the realized graph should also work).
 The RealizedCandidateLinks in src and dest are references to those in links, so modifying
 a link in any of these will modify it in all of them.
 """
-function index_candidate_links(G, links::Vector{CandidateLink{T}}) where T
-    realized = [RealizedCandidateLink{T}(link, nothing, nothing) for link ∈ links]
+function index_candidate_links(G, links::Vector{CandidateLink})
+    realized = [RealizedCandidateLink(link, nothing, nothing) for link ∈ links]
 
-    src = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink{T}}}(Vector{RealizedCandidateLink})
-    dest = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink{T}}}(Vector{RealizedCandidateLink})
+    src = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink}}(Vector{RealizedCandidateLink})
+    dest = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink}}(Vector{RealizedCandidateLink})
 
     for link in realized
         v1 = label_for(G, link.link.fr_edge_src)
@@ -50,7 +50,7 @@ the network, and scoring is based only on the distance matrix, not on the graph 
 However, for some applications, we need to "realize" the graph—i.e. create a graph that
 has edges for all the candidate links, labeled as such. This function does that.
 """
-function realize_graph(G, links::Vector{CandidateLink{T}}) where T
+function realize_graph(G, links::Vector{CandidateLink})
     # Create the new graph
     G2 = new_graph()
 
@@ -70,7 +70,7 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
 
     for (v1, v2) in edge_labels(G)
         # locations where we will break this edge
-        breakpoints = T[]
+        breakpoints = Int64[]
 
         # links that start on this edge
         for link in realized_links.src[(v1, v2)]
