@@ -403,9 +403,9 @@ function index_graph_edges(G)
     edgeidx = RTree(2)
     edges = Vector{NTuple{2, VertexID}}()
     for (v1, v2) in edge_labels(G)
-        env = ArchGDAL.envelope(G[v1, v2].geom)
+        env = extent(G[v1, v2].geom)
         push!(edges, (v1, v2))
-        insert!(edgeidx, length(edges), [env.MinX, env.MinY], [env.MaxX, env.MaxY])
+        insert!(edgeidx, length(edges), extent_idx(env)...)
     end
     return (edgeidx, edges)
 end

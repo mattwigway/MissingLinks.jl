@@ -22,11 +22,8 @@ function find_disconnected_crossings(G, dmat; tolerance=10)
             @info "Processed $i / $(ne(G)) edges"
         end
         sgeom = G[sedge...].geom
-        source_edge_envelope = ArchGDAL.envelope(sgeom)
-        candidates = intersects(eidx,
-            [source_edge_envelope.MinX, source_edge_envelope.MinY],
-            [source_edge_envelope.MaxX, source_edge_envelope.MaxY]
-        )
+        source_edge_envelope = extent(sgeom)
+        candidates = intersects(eidx, extent_idx(source_edge_envelope...))
 
         for candidate in candidates
             tedge = edges[candidate]

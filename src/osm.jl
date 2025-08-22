@@ -102,10 +102,10 @@ function graph_from_osm(pbf, settings, projection)
                         label = VertexID(osmid)
 
                         if !haskey(G, label)
-                            pt = ArchGDAL.createpoint(nodes[osmid])
+                            pt = GeoInterface.Point(nodes[osmid])
                             # Project from OSM WGS 84 to desired projection
-                            ptpr = ArchGDAL.reproject(pt, GFT.EPSG(4326), projection, order=:trad)
-                            G[label] = (ArchGDAL.getx(ptpr, 0), ArchGDAL.gety(ptpr, 0))
+                            ptpr = GeometryOps.reproject(pt, GFT.EPSG(4326), projection)
+                            G[label] = (GeoInterface.x(ptpr), GeoInterface.y(ptpr))
                         end
                     end
 
@@ -115,18 +115,18 @@ function graph_from_osm(pbf, settings, projection)
                     end
                     
                     # create an edge
-                    geom = ArchGDAL.createlinestring(coords)
+                    geom = GeoInterface.LineString(coords)
 
                     # reproject
-                    geom = ArchGDAL.reproject(geom, GFT.EPSG(4326), projection, order=:trad)
+                    geom = GeometryOps.reproject(geom, GFT.EPSG(4326), projection)
 
                     if haskey(G, VertexID(nid1), VertexID(nid2))
                         # can't have a duplicate edge, split it in the middle
                         # we have to do this after reprojection
-                        len = ArchGDAL.geomlength(geom)
+                        len = GeoInterface.length(geom)
                         g1 = geom_between(geom, 0, len / 2)
                         g2 = geom_between(geom, len / 2, len)
-                        pt = (ArchGDAL.getx(g2, 0), ArchGDAL.gety(g2, 0))
+                        pt = (GeoInterface.x(g2, 0), GeoInterface.y(g2, 0))
                         
                         G[VertexID(split_nodeid)] = pt
 
@@ -148,7 +148,7 @@ function graph_from_osm(pbf, settings, projection)
                         split_nodeid -= 1
                     else
                         G[VertexID.((nid1, nid2))...] = EdgeData((
-                            ArchGDAL.geomlength(geom),
+                            GeoInterface.length(geom),
                             haskey(way.tags, "highway") ? way.tags["highway"] : "missing",
                             geom
                         ))

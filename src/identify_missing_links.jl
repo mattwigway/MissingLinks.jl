@@ -58,7 +58,7 @@ function identify_potential_missing_links(G, dmat::DistanceMatrix, max_link_dist
 
         source_edge_geom = G[source_edge...].geom
         source_edge_length_m = G[source_edge...].length_m
-        source_edge_envelope = ArchGDAL.envelope(source_edge_geom)
+        search_envelope = Extents.buffer(extent(source_edge_geom), max_link_dist)
         source_edge_fr, source_edge_to = source_edge
 
         # find other edges whose bounding boxes intersect the source_edge edge bounding box
@@ -66,10 +66,7 @@ function identify_potential_missing_links(G, dmat::DistanceMatrix, max_link_dist
         candidates = map(
             # optimization - could discard edges that have already been used as a source
             x -> edges[x],
-            intersects(sidx,
-                [source_edge_envelope.MinX, source_edge_envelope.MinY] .- max_link_dist,
-                [source_edge_envelope.MaxX, source_edge_envelope.MaxY] .+ max_link_dist
-            )
+            intersects(sidx, extent_idx(search_envelope)...)
         )
 
         # all geometries are coded with lower-numbered node first

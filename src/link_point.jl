@@ -76,7 +76,7 @@ function link_points!(G, pts; tol=20, min_split_length=1, create=false)
                 continue
             end
 
-            dist = ArchGDAL.distance(G[candidate...].geom, pt)
+            dist = GeoInterface.distance(G[candidate...].geom, pt)
             if dist < best_dist
                 best_candidate = candidate
                 best_dist = dist
@@ -95,13 +95,13 @@ function link_points!(G, pts; tol=20, min_split_length=1, create=false)
                 # update index
                 e1 = tuple(sort([best_candidate[1], split])...)
                 push!(edges, e1)
-                env = ArchGDAL.envelope(G[e1...].geom)
-                insert!(sidx, length(edges), [env.MinX, env.MinY], [env.MaxX, env.MaxY])
+                env = extent(G[e1...].geom)
+                insert!(sidx, length(edges), extent_idx(env)...)
                 
                 e2 = tuple(sort([best_candidate[2], split])...)
                 push!(edges, e2)
-                env = ArchGDAL.envelope(G[e2...].geom)
-                insert!(sidx, length(edges), [env.MinX, env.MinY], [env.MaxX, env.MaxY])
+                env = extent(G[e2...].geom)
+                insert!(sidx, length(edges), extent_idx(env)...)
 
                 return split
             end

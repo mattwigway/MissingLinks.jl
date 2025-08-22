@@ -56,8 +56,8 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
         if i % 10000 == 0
             @info "$i / $(length(geoms))"
         end
-        envl = ArchGDAL.envelope(geom)
-        insert!(index, i, [envl.MinX, envl.MinY], [envl.MaxX, envl.MaxY])
+        envl = extent(geom)
+        insert!(index, i, extent_idx(envl)...)
     end
 
     @info "Linking ends to middles"
@@ -86,7 +86,7 @@ function semi_to_fully_noded(data...; snap_tolerance=1e-6, split_tolerance=1e-6)
                 # TODO skip snaps to the same link as the start and end point are from
                 # This should not change outputs as they'll be snapped to the ends already
                 # We aren't currently handling p-shaped streets
-                if ArchGDAL.distance(geoms[candidate], xygeom) ≤ snap_tolerance
+                if GeoInterface.distance(geoms[candidate], xygeom) ≤ snap_tolerance
                     # It is within the distance, find the closest point on the candidate
                     geosgeom = geos_geoms[candidate]
                     closest_offset = LibGEOS.project(geosgeom, LibGEOS.Point(xy))

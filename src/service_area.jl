@@ -19,7 +19,7 @@ function find_point_on_edge(origin::ArchGDAL.IGeometry{ArchGDAL.wkbPoint}, G, ed
 
     for candidate in candidates
         candidate_geom = G[candidate...].geom
-        dist = ArchGDAL.distance(origin, candidate_geom)
+        dist = GeoInterface.distance(origin, candidate_geom)
         # gotta check distance, spatial index overselects
         if dist < snap_tolerance && dist < best_dist
             best_candidate = candidate

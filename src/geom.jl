@@ -136,3 +136,6 @@ function get_xy(geom)
 end
 
 geomapprox(a::ArchGDAL.IGeometry, b::ArchGDAL.IGeometry; kwargs...) = all(isapprox.(get_xy(a), get_xy(b); kwargs...))
+
+# convenience function to convert an extent to the format needed for a LibSpatialIndex query
+extent_idx(e::Extents.Extent) = ([e.X[1], e.Y[1]], [e.X[2], e.Y[2]])

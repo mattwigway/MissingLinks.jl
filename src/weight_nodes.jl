@@ -29,13 +29,13 @@ function create_graph_weights(G, gdf, weightcols, distance)
         end
 
         geom = row[geomcol]
-        env = ArchGDAL.envelope(geom)
+        env = Extents.buffer(extent(geom), (X=distance, Y=distance))
         nodes = Int64[] # node codes, not ids
         # expand the envelope to account for buffer
-        for candidate_idx in intersects(edgeidx, [env.MinX - distance, env.MinY - distance], [env.MaxX + distance, env.MaxY + distance])
+        for candidate_idx in intersects(edgeidx, extent_idx(env)...)
             edge = edges[candidate_idx]
             edge_geom = G[edge[1], edge[2]].geom
-            if ArchGDAL.distance(geom, edge_geom) < distance
+            if GeoInterface.distance(geom, edge_geom) < distance
                 # this edge is close by
                 # some nodes will be added more than once, and that's okay - they are attached
                 # to two nearby edges, so get twice the weight
