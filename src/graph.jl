@@ -22,6 +22,7 @@ order_vertices(vs::NTuple{2, VertexID}) = order_vertices(vs...)
 VertexID(id::Int64) = VertexID(id, :node)
 
 Base.isless(a::VertexID, b::VertexID) = a.id < b.id || (a.id == b.id && a.type < b.type)
+Base.hash(a::VertexID, h::UInt64) = hash(a.id, hash(a.type, hash(:VertexID, h)))
 Base.isequal(a::VertexID, b::VertexID) = a.id == b.id && a.type == b.type
 
 function find_or_create_vertex!(G, end_node_idx, location::NTuple{2, Float64}, tolerance)
@@ -106,12 +107,17 @@ function add_short_edges!(G, max_edge_length)
         # find nearby vertices
         loc = G[vlabel]
 
+        all_candidates = LibSpatialIndex.intersects(idx, collect(loc .- max_edge_length), collect(loc .+ max_edge_length))
+
+        # this was added during testing to track down JuliaGeo/LibSpatialIndex#37, but it's a low cost
+        # check and who knows it might catch another correctness/version incompatibility issue at some point.
+        isempty(all_candidates) && error("No candidates near $vlabel @ $loc, this is an error as we should at least find itself!")
+
         # find all candidates ≤ max_edge_length away
         candidates = filter(
-                map(candidate -> (label_for(G, candidate), norm2(loc .- G[label_for(G, candidate)])),
-                intersects(idx, collect(loc .- max_edge_length), collect(loc .+ max_edge_length)))
+                map(candidate -> (label_for(G, candidate), norm2(loc .- G[label_for(G, candidate)])), all_candidates)
             ) do (_, dist)
-            dist .≤ max_edge_length            
+            dist .≤ max_edge_length           
         end
 
         for (candidate, geographic_dist) in candidates
@@ -122,10 +128,11 @@ function add_short_edges!(G, max_edge_length)
             # that are geographically 2m apart, but are connected via the network in a distance of only 3m, we don't
             # add a short link completing the triangle.
             if dists[code_for(G, candidate)] > geographic_dist * NODE_CONNECT_FACTOR
+                fr, to = order_vertices(vlabel, candidate)
                 G[vlabel, candidate] = (
                     length_m=geographic_dist,
                     link_type="short",
-                    geom=ArchGDAL.createlinestring([loc, G[candidate]])
+                    geom=ArchGDAL.createlinestring([G[fr], G[to]])
                 )
             end
         end
