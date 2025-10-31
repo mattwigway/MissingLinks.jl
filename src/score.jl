@@ -12,12 +12,7 @@ function compute_link_score(link::CandidateLink, pool, origin_weights, dest_weig
         # distances _from_ each end of the target link
         to_distances = distances_from(dmat, link.to_edge_src, link.to_edge_tgt)
 
-        # touching the database to get the old distance of every O-D pair is expensive
-        # instead, touch the database once per origin to get distances to every destination, and store them here
-        # we put this in a vector so we can write and read without allocations and indirection.
-        # This is effectively one row of the non-sparse distance matrix. Even in very large networks this should not
-        # take much memory (e.g. with 1 million vertices, this is 8mb).
-        distances = Vector{Union{Int64, Missing}}(undef, nv(dmat.graph))
+        new_distances = @NamedTuple{src_code::Int64, dst_code::Int64, new_dist::Int64}[]
 
         for (origin, fr_dist_start, fr_dist_end) in fr_distances
             # how far is this origin from the start of this link?
@@ -29,29 +24,28 @@ function compute_link_score(link::CandidateLink, pool, origin_weights, dest_weig
                 # It is close enough it could possibly provide access to something (distance to start of link
                 # plus length of link itself)
 
-                # cache distances through existing graph to everything nearby
-                fill!(distances, missing)
-                for (dest, dist) in distances_from(dmat, origin)
-                    distances[code_for(dmat.graph, dest)] = dist
-                end
-
                 for (dest, to_dist_start, to_dist_end) in to_distances
                     dest_distance = minimum_nonmissing(to_dist_start + link.to_dist_from_start, to_dist_end + link.to_dist_to_end)
 
-                    if origin_distance + link.geographic_length_m + dest_distance ≤ decay_cutoff_m
-                        new_dist = origin_distance + link.geographic_length_m + dest_distance
-                        old_dist = distances[code_for(dmat.graph, dest)]
-                        if (ismissing(old_dist) || new_dist < old_dist)
-                            # only affects access if it makes the trip shorter
-                            Δdecayed = decay_function(new_dist)
-                            if !ismissing(old_dist) # if it was unreachable, weight is zero
-                                Δdecayed -= decay_function(old_dist)
-                            end
-                            new_access += Δdecayed * origin_weights[code_for(dmat.graph, origin)] * dest_weights[code_for(dmat.graph, dest)]
-                        end
+                    new_dist = origin_distance + link.geographic_length_m + dest_distance
+                    if new_dist ≤ decay_cutoff_m
+                        push!(new_distances, (src_code=code_for(dmat.graph, origin), dst_code=code_for(dmat.graph, dest), new_dist=new_dist))
                     end
                 end
             end
+        end
+
+        @info "done calculating new distances"
+
+        # now, compare with old distances
+
+        get_existing_distances_if_better(dmat, new_distances) do d
+            # only affects access if it makes the trip shorter
+            Δdecayed::Float64 = decay_function(d.new_dist)
+            if !ismissing(d.existing_dist) # if it was unreachable, weight is zero
+                Δdecayed -= decay_function(d.existing_dist)
+            end
+            new_access += Δdecayed * origin_weights[d.src_code] * dest_weights[d.dst_code]
         end
     end
 

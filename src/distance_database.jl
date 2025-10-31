@@ -229,6 +229,33 @@ function distances_to(m::DistanceMatrix, v::VertexID)
     end
 end
 
+"""
+"""
+function get_existing_distances_if_better(f, m::DistanceMatrix, new_distances)
+    DBInterface.execute(m.db, "CREATE TEMPORARY TABLE new_distances (src_code INTEGER, dst_code INTEGER, new_dist INTEGER) STRICT")
+    ins = DBInterface.prepare(m.db, "INSERT INTO new_distances (src_code, dst_code, new_dist) VALUES (?, ?, ?)")
+
+    for vals in new_distances
+        DBInterface.execute(identity, ins, (vals.src_code, vals.dst_code, vals.new_dist))
+    end
+
+    @info "done inserting"
+
+    result = DBInterface.execute(m.db, """
+        SELECT n.src_code, n.dst_code, n.new_dist, d.dist FROM new_distances n
+            LEFT JOIN distances d ON (d.src_code = n.src_code AND d.dst_code = n.dst_code)
+            WHERE dist IS NULL OR new_dist < dist
+    """, strict=true) do cursor
+        for row in cursor
+            f((src_code=row.src_code::Int64, dst_code=row.dst_code::Int64, new_dist=row.new_dist::Int64, existing_dist=row.dist::Int64))
+        end
+    end
+
+    DBInterface.execute(m.db, "DROP TABLE new_distances")
+
+    return result
+end
+
 function Base.getindex(m::DistanceMatrix, from::VertexID, to::VertexID)
     DBInterface.execute(m.both_query, (src_code=code_for(m.graph, from), dst_code=code_for(m.graph, to))) do cursor
         itr = iterate(cursor)

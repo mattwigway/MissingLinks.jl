@@ -33,7 +33,7 @@ that are unreachable altogether) the matrix will contain `typemax(T)`.
 
 Will use multiple threads if Julia is started with multiple threads.
 """
-function calculate_distances(G; maxdist=5000, origins=1:nv(G))
+function calculate_distances(G; maxdist=5000, origins=1:nv(G), ntasks=Threads.threadpoolsize() * 2)
     @info "Routing with $(Threads.nthreads()) threads"
 
     # initialize the matrix
@@ -42,14 +42,20 @@ function calculate_distances(G; maxdist=5000, origins=1:nv(G))
 
     writer_task = run(queue)
 
-    # wait for all the routing to finish
-    @sync begin
-        for i in origins
-            Threads.@spawn one_origin_distances(G, $i, queue, maxdist)
-        end
+    origin_channel = Channel{Int64}(length(origins))
+    put!.(Ref(origin_channel), origins)
+
+    close(origin_channel) # indicate no more items to add
+
+    # Start a finite number of tasks to avoid overwhelming memory
+    # Tasks finish when channel is empty
+    Threads.foreach(origin_channel, schedule=Threads.StaticSchedule(), ntasks=ntasks) do origin
+        one_origin_distances(G, origin, queue, maxdist)
     end
 
-    # signal that we're done adding items, let the queue drain
+    @assert isempty(origin_channel)
+
+    # signal that we're done adding items, let the writing queue drain
     drain(queue)
 
     # wait for the writer task to finish
