@@ -2,44 +2,56 @@
 A CandidateLink represents a link between two existing edges. It stores the vertex codes (not labels)
 from each end of each edge, as well as the distances from each vertex at the point where the link is.
 """
-struct CandidateLink{T<:Real}
-    fr_edge_src::Int64
-    fr_edge_tgt::Int64
-    fr_dist_from_start::T
-    fr_dist_to_end::T
-    to_edge_src::Int64
-    to_edge_tgt::Int64
-    to_dist_from_start::T
-    to_dist_to_end::T
-    geographic_length_m::T
-    network_length_m::T
+@kwdef struct CandidateLink
+    fr_edge_src::VertexID
+    fr_edge_tgt::VertexID
+    fr_dist_from_start::Int64
+    fr_dist_to_end::Int64
+    to_edge_src::VertexID
+    to_edge_tgt::VertexID
+    to_dist_from_start::Int64
+    to_dist_to_end::Int64
+    geographic_length_m::Int64
+    network_length_m::Union{Int64, Missing}
 end
 
-# constructor with keyword args for clarity in tests. All keywords must be passed, or will TypeError (intentionally)
-CandidateLink(;
-    fr_edge_src=nothing,
-    fr_edge_tgt=nothing,
-    fr_dist_from_start=nothing,
-    fr_dist_to_end=nothing,
-    to_edge_src=nothing,
-    to_edge_tgt=nothing,
-    to_dist_from_start=nothing,
-    to_dist_to_end=nothing,
-    geographic_length_m=nothing,
-    network_length_m=nothing
-) = CandidateLink(
-        fr_edge_src,
-        fr_edge_tgt,
-        fr_dist_from_start,
-        fr_dist_to_end,
-        to_edge_src,
-        to_edge_tgt,
-        to_dist_from_start,
-        to_dist_to_end,
-        geographic_length_m,
-        network_length_m
+Base.hash(l::CandidateLink, h::UInt64) = hash(
+    l.fr_edge_src, hash(
+        l.fr_edge_tgt, hash(
+            l.fr_dist_from_start, hash(
+                l.fr_dist_to_end, hash(
+                    l.to_edge_src, hash(
+                        l.to_edge_tgt, hash(
+                            l.to_dist_from_start, hash(
+                                l.to_dist_to_end, hash(
+                                    l.geographic_length_m, hash(
+                                        l.network_length_m, hash(
+                                            :CandidateLink,
+                                            h
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
     )
+)
 
+Base.isequal(a::CandidateLink, b::CandidateLink) =
+    a.fr_edge_src == fr_edge_src &&
+    a.fr_edge_tgt == fr_edge_tgt &&
+    a.fr_dist_from_start == fr_dist_from_start &&
+    a.fr_dist_to_end == fr_dist_to_end &&
+    a.to_edge_src == to_edge_src &&
+    a.to_edge_tgt == to_edge_tgt &&
+    a.to_dist_from_start == to_dist_from_start &&
+    a.to_dist_to_end == to_dist_to_end &&
+    a.geographic_length_m == geographic_length_m &&
+    # this is why we can't use @struct_hash_equals - need to handle missings differently
+    ((ismissing(a.network_length_m) && ismissing(b.network_length_m)) || a.network_length_m == network_length_m)
 
 """
 Create a reversed version of a candidate link, used in evaluating accessibility to calculate
@@ -60,5 +72,5 @@ function Base.reverse(link::CandidateLink)
     )
 end
 
-Base.show(io::IO, x::CandidateLink{<:Any}) =
-    println(io, "$(round(Int64, x.geographic_length_m))m CandidateLink connecting edge $(x.fr_edge_src)-$(x.fr_edge_tgt)@$(round(Int64, x.fr_dist_from_start))m to $(x.to_edge_src)-$(x.to_edge_tgt)@$(round(Int64, x.to_dist_from_start))m; network distance $(round(Int64, x.network_length_m))m")
+Base.show(io::IO, x::CandidateLink) =
+    println(io, "$(round(Int64, x.geographic_length_m))m CandidateLink connecting edge $(x.fr_edge_src)-$(x.fr_edge_tgt)@$((x.fr_dist_from_start))m to $(x.to_edge_src)-$(x.to_edge_tgt)@$((x.to_dist_from_start))m; network distance $((x.network_length_m))m")
