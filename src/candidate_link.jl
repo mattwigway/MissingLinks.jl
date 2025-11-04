@@ -2,17 +2,17 @@
 A CandidateLink represents a link between two existing edges. It stores the vertex codes (not labels)
 from each end of each edge, as well as the distances from each vertex at the point where the link is.
 """
-@kwdef struct CandidateLink
+@kwdef struct CandidateLink{T<:Real}
     fr_edge_src::VertexID
     fr_edge_tgt::VertexID
-    fr_dist_from_start::Int64
-    fr_dist_to_end::Int64
+    fr_dist_from_start::T
+    fr_dist_to_end::T
     to_edge_src::VertexID
     to_edge_tgt::VertexID
-    to_dist_from_start::Int64
-    to_dist_to_end::Int64
-    geographic_length_m::Int64
-    network_length_m::Union{Int64, Missing}
+    to_dist_from_start::T
+    to_dist_to_end::T
+    geographic_length_m::T
+    network_length_m::T
 end
 
 Base.hash(l::CandidateLink, h::UInt64) = hash(

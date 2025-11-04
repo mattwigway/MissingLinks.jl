@@ -4,6 +4,7 @@
     import MissingLinks: deduplicate_links, graph_from_gdal, fill_distance_matrix!, CandidateLink
     import DataFrames: DataFrame
     import Graphs: nv
+    import MetaGraphsNext: label_for
 
     # the network we have is just two parallel lines split into a number of edges
     # We then have a number of candidate links between them to test deduplication
@@ -29,12 +30,12 @@
         # they'd all be equivalent.
         links = [
             CandidateLink(
-                fr_edge_src=1,
-                fr_edge_tgt=2,
+                fr_edge_src=label_for(G, 1),
+                fr_edge_tgt=label_for(G, 2),
                 fr_dist_from_start=UInt16(25),
                 fr_dist_to_end=UInt16(25),
-                to_edge_src=5,
-                to_edge_tgt=6,
+                to_edge_src=label_for(G, 5),
+                to_edge_tgt=label_for(G, 6),
                 to_dist_from_start=UInt16(25),
                 to_dist_to_end=UInt16(25),
                 geographic_length_m=UInt16(9), # shortest of this SOI
@@ -42,12 +43,12 @@
             ),
 
             CandidateLink(
-                fr_edge_src=2,
-                fr_edge_tgt=3,
+                fr_edge_src=label_for(G, 2),
+                fr_edge_tgt=label_for(G, 3),
                 fr_dist_from_start=UInt16(25),
                 fr_dist_to_end=UInt16(25),
-                to_edge_src=6,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 6),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(25),
                 to_dist_to_end=UInt16(25),
                 geographic_length_m=UInt16(10), #longer
@@ -56,12 +57,12 @@
 
             # this one is not a dupe
             CandidateLink(
-                fr_edge_src=3,
-                fr_edge_tgt=4,
+                fr_edge_src=label_for(G, 3),
+                fr_edge_tgt=label_for(G, 4),
                 fr_dist_from_start=UInt16(0), # start is in previous SOI
                 fr_dist_to_end=UInt16(200),
-                to_edge_src=7,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 7),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(0), # end is not, because link is backwards
                 to_dist_to_end=UInt16(200),
                 geographic_length_m=UInt16(10),
@@ -72,7 +73,7 @@
         # we will always find the backwards versions as well
         links = [links..., reverse.(links)...]
 
-        dedupe = deduplicate_links(links, dmat, 100)
+        dedupe = deduplicate_links(G, links, dmat, 100)
 
         @test length(dedupe) == 2
         @test dedupe[1] === links[1]
@@ -84,12 +85,12 @@
         # one that gets retained.
         links = [
             CandidateLink(
-                fr_edge_src=1,
-                fr_edge_tgt=2,
+                fr_edge_src=label_for(G, 1),
+                fr_edge_tgt=label_for(G, 2),
                 fr_dist_from_start=UInt16(25),
                 fr_dist_to_end=UInt16(25),
-                to_edge_src=5,
-                to_edge_tgt=6,
+                to_edge_src=label_for(G, 5),
+                to_edge_tgt=label_for(G, 6),
                 to_dist_from_start=UInt16(25),
                 to_dist_to_end=UInt16(25),
                 geographic_length_m=UInt16(9),
@@ -97,12 +98,12 @@
             ),
 
             CandidateLink(
-                fr_edge_src=2,
-                fr_edge_tgt=3,
+                fr_edge_src=label_for(G, 2),
+                fr_edge_tgt=label_for(G, 3),
                 fr_dist_from_start=UInt16(25),
                 fr_dist_to_end=UInt16(25),
-                to_edge_src=6,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 6),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(25),
                 to_dist_to_end=UInt16(25),
                 geographic_length_m=UInt16(10), #longer
@@ -110,12 +111,12 @@
             ),
 
             CandidateLink(
-                fr_edge_src=1,
-                fr_edge_tgt=2,
+                fr_edge_src=label_for(G, 1),
+                fr_edge_tgt=label_for(G, 2),
                 fr_dist_from_start=UInt16(25),
                 fr_dist_to_end=UInt16(25),
-                to_edge_src=6,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 6),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(25),
                 to_dist_to_end=UInt16(25),
                 geographic_length_m=UInt16(8), # shortest of this SOI
@@ -124,12 +125,12 @@
 
             # this one is not a dupe
             CandidateLink(
-                fr_edge_src=3,
-                fr_edge_tgt=4,
+                fr_edge_src=label_for(G, 3),
+                fr_edge_tgt=label_for(G, 4),
                 fr_dist_from_start=UInt16(0), # start is in previous SOI
                 fr_dist_to_end=UInt16(200),
-                to_edge_src=7,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 7),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(0), # end is not, because link is backwards
                 to_dist_to_end=UInt16(200),
                 geographic_length_m=UInt16(10),
@@ -140,7 +141,7 @@
         # we will always find the backwards versions as well
         links = [links..., reverse.(links)...]
 
-        dedupe = deduplicate_links(links, dmat, 100)
+        dedupe = deduplicate_links(G, links, dmat, 100)
 
         @test length(dedupe) == 2
         @test dedupe[1] === links[3]
@@ -152,24 +153,24 @@
             # both of these originate on 34, one goes to 56, the other to 68,
             # they should be treated as duplicates
             CandidateLink(
-                fr_edge_src=3,
-                fr_edge_tgt=4,
+                fr_edge_src=label_for(G, 3),
+                fr_edge_tgt=label_for(G, 4),
                 fr_dist_from_start=UInt16(100),
                 fr_dist_to_end=UInt16(100),
-                to_edge_src=5,
-                to_edge_tgt=6,
+                to_edge_src=label_for(G, 5),
+                to_edge_tgt=label_for(G, 6),
                 to_dist_from_start=UInt16(50),
                 to_dist_to_end=UInt16(0),
                 geographic_length_m=UInt16(9), # shortest of this SOI
                 network_length_m=typemax(UInt16)
             ),
             CandidateLink(
-                fr_edge_src=3,
-                fr_edge_tgt=4,
+                fr_edge_src=label_for(G, 3),
+                fr_edge_tgt=label_for(G, 4),
                 fr_dist_from_start=UInt16(100),
                 fr_dist_to_end=UInt16(100),
-                to_edge_src=6,
-                to_edge_tgt=8,
+                to_edge_src=label_for(G, 6),
+                to_edge_tgt=label_for(G, 8),
                 to_dist_from_start=UInt16(0),
                 to_dist_to_end=UInt16(50),
                 geographic_length_m=UInt16(10),
@@ -181,7 +182,7 @@
 
         # threshold set at 75 b/c we want to make sure that the distance measurement for the start of
         # the links is not requiring a walk to the end of the street and back.
-        dedupe = deduplicate_links(links, dmat, 75)
+        dedupe = deduplicate_links(G, links, dmat, 75)
 
         @test length(dedupe) == 1
         @test dedupe[1] === links[1]

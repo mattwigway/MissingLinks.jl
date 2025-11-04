@@ -38,7 +38,7 @@ end
 Compute the network distance between the two points on links, by computing
 between from ends and adding fractions of the edge.
 """
-function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
+function compute_net_distance(G, dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, dto, ddist, denddist) where T
     if sfr == dfr && sto == dto
         # same edge
         # NB: we could remove the base.checked_sub here if perf is poor, as this should never overflow, this is a
@@ -52,15 +52,19 @@ function compute_net_distance(dmat::Matrix{T}, sfr, sto, sdist, senddist, dfr, d
         # get the minimum distance, all possible combinations of from and to
         # there are 8 comparisons because this is not assuming undirectedness (though
         # other places in the code still do).
+        sfr_code = code_for(G, sfr)
+        sto_code = code_for(G, sto)
+        dfr_code = code_for(G, dfr)
+        dto_code = code_for(G, dto)
         min(
-            add_unless_typemax(dmat[sfr, dfr], sdist + ddist),
-            add_unless_typemax(dmat[sto, dfr], senddist + ddist),
-            add_unless_typemax(dmat[sfr, dto], sdist + denddist),
-            add_unless_typemax(dmat[sto, dto], senddist + denddist),
-            add_unless_typemax(dmat[dfr, sfr], ddist + sdist),
-            add_unless_typemax(dmat[dto, sfr], denddist + sdist),
-            add_unless_typemax(dmat[dfr, sto], ddist + senddist),
-            add_unless_typemax(dmat[dto, sto], denddist + senddist)
+            add_unless_typemax(dmat[sfr_code, dfr_code], sdist + ddist),
+            add_unless_typemax(dmat[sto_code, dfr_code], senddist + ddist),
+            add_unless_typemax(dmat[sfr_code, dto_code], sdist + denddist),
+            add_unless_typemax(dmat[sto_code, dto_code], senddist + denddist),
+            add_unless_typemax(dmat[dfr_code, sfr_code], ddist + sdist),
+            add_unless_typemax(dmat[dto_code, sfr_code], denddist + sdist),
+            add_unless_typemax(dmat[dfr_code, sto_code], ddist + senddist),
+            add_unless_typemax(dmat[dto_code, sto_code], denddist + senddist)
         )
     end
 end

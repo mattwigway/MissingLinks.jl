@@ -44,7 +44,7 @@ function find_disconnected_crossings(G, dmat; tolerance=10)
                         else
                             sdist = LibGEOS.project(sgeom, pt)
                             tdist = LibGEOS.project(tgeom, pt)
-                            dist = compute_net_distance(dmat,
+                            dist = compute_net_distance(G, dmat,
                                 code_for(G, sedge[1]), code_for(G, sedge[2]), sdist, G[sedge...].length_m - sdist,
                                 code_for(G, tedge[1]), code_for(G, tedge[2]), tdist, G[tedge...].length_m - tdist
                             )

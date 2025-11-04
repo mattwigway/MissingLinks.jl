@@ -107,7 +107,7 @@ function add_short_edges!(G, max_edge_length)
         # find nearby vertices
         loc = G[vlabel]
 
-        all_candidates = LibSpatialIndex.intersects(idx, collect(loc .- max_edge_length), collect(loc .+ max_edge_length))
+        all_candidates = intersects(idx, collect(loc .- max_edge_length), collect(loc .+ max_edge_length))
 
         # this was added during testing to track down JuliaGeo/LibSpatialIndex#37, but it's a low cost
         # check and who knows it might catch another correctness/version incompatibility issue at some point.
