@@ -5,7 +5,7 @@ mutable struct RealizedCandidateLink{T}
 end
 
 """
-    index_candidate_links(G, links)
+    index_candidate_links(links)
 
 Return a NamedTuple with three members:
 - links: Vector of RealizedCandidateLinks, one for each link in `links`
