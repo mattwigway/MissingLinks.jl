@@ -9,7 +9,7 @@
 end
 
 @testitem "Identify missing links" begin
-    import MissingLinks: graph_from_gdal, identify_potential_missing_links, fill_distance_matrix!, CandidateLink
+    import MissingLinks: graph_from_gdal, identify_potential_missing_links, fill_distance_matrix!, CandidateLink, VertexID
     import DataFrames: DataFrame
     import ArchGDAL as AG
     import StructEquality: @struct_hash_equal
@@ -40,12 +40,12 @@ end
         @test links[1] == reverse(links[2])
 
         @test links[1] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=one(UInt16), # actually √2 but is rounded
             fr_dist_to_end=UInt16(2),
-            to_edge_src=3,
-            to_edge_tgt=4,
+            to_edge_src=VertexID(3),
+            to_edge_tgt=VertexID(4),
             to_dist_from_start=one(UInt16),
             to_dist_to_end=one(UInt16),
             geographic_length_m=one(UInt16),
@@ -71,12 +71,12 @@ end
         @test links[1] == reverse(links[2])
 
         @test links[1] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=one(UInt16),
             fr_dist_to_end=zero(UInt16),
-            to_edge_src=3,
-            to_edge_tgt=4,
+            to_edge_src=VertexID(3),
+            to_edge_tgt=VertexID(4),
             to_dist_from_start=zero(UInt16),
             to_dist_to_end=one(UInt16),
             geographic_length_m=one(UInt16),
@@ -109,12 +109,12 @@ end
         @test links[1] == reverse(links[2])
 
         @test links[1] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=UInt16(6), 
             fr_dist_to_end=UInt16(4),
-            to_edge_src=3,
-            to_edge_tgt=4,
+            to_edge_src=VertexID(3),
+            to_edge_tgt=VertexID(4),
             to_dist_from_start=UInt16(6), # Actually 6.414
             to_dist_to_end=UInt16(0),
             geographic_length_m=one(UInt16),
@@ -139,12 +139,12 @@ end
         @test links[4] == reverse(links[6])
 
         @test links[2] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=UInt16(5), 
             fr_dist_to_end=UInt16(0),
-            to_edge_src=5,
-            to_edge_tgt=6,
+            to_edge_src=VertexID(5),
+            to_edge_tgt=VertexID(6),
             to_dist_from_start=UInt16(1), # Actually 1.414
             to_dist_to_end=UInt16(2),
             geographic_length_m=one(UInt16),
@@ -152,12 +152,12 @@ end
         )
 
         @test links[4] == CandidateLink(
-            fr_edge_src=3,
-            fr_edge_tgt=4,
+            fr_edge_src=VertexID(3),
+            fr_edge_tgt=VertexID(4),
             fr_dist_from_start=UInt16(0), 
             fr_dist_to_end=UInt16(5),
-            to_edge_src=5,
-            to_edge_tgt=6,
+            to_edge_src=VertexID(5),
+            to_edge_tgt=VertexID(6),
             to_dist_from_start=UInt16(1), # Actually 1.414
             to_dist_to_end=UInt16(2),
             geographic_length_m=one(UInt16),
@@ -195,12 +195,12 @@ end
         @test length(links) == 2
         @test links[1] == reverse(links[2])
         @test links[1] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=UInt16(0), 
             fr_dist_to_end=UInt16(1475),
-            to_edge_src=3,
-            to_edge_tgt=4,
+            to_edge_src=VertexID(3),
+            to_edge_tgt=VertexID(4),
             to_dist_from_start=UInt16(1475), # Geometry will be reversed
             to_dist_to_end=UInt16(0),
             geographic_length_m=UInt16(50),
@@ -254,12 +254,12 @@ end
         @test links[1] == reverse(links[2])
 
         @test links[1] == CandidateLink(
-            fr_edge_src=1,
-            fr_edge_tgt=2,
+            fr_edge_src=VertexID(1),
+            fr_edge_tgt=VertexID(2),
             fr_dist_from_start=UInt16(0), 
             fr_dist_to_end=UInt16(200), # 200m split edge
-            to_edge_src=5,
-            to_edge_tgt=6,
+            to_edge_src=VertexID(5),
+            to_edge_tgt=VertexID(6),
             to_dist_from_start=UInt16(200), # Geometry will be reversed
             to_dist_to_end=UInt16(0),
             geographic_length_m=UInt16(30),

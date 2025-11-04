@@ -128,18 +128,16 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                     candidate_dist_to_end = round(T, candidate_edge_length_m) - candidate_dist_from_start
 
                     # calculate the actual network distance from these points
-                    net_dist_m = compute_net_distance(dmat, source_edge_fr, source_edge_to, source_dist_from_start, source_dist_to_end,
-                        candidate_edge_fr, candidate_edge_to, candidate_dist_from_start, candidate_dist_to_end)
+                    net_dist_m = compute_net_distance(G, dmat, source_edge..., source_dist_from_start, source_dist_to_end,
+                        candidate..., candidate_dist_from_start, candidate_dist_to_end)
 
                     # re-check net dist now that we have an actual value, not an upper bound
                     if net_dist_m > min_net_dist
                         push!(links, CandidateLink{T}(
-                            source_edge[1],
-                            source_edge[2],
+                            source_edge...,
                             source_dist_from_start,
                             source_dist_to_end,
-                            candidate[1],
-                            candidate[2],
+                            candidate...,
                             candidate_dist_from_start,
                             candidate_dist_to_end,
                             round(T, length_m),
