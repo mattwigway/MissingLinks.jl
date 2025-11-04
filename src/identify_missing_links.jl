@@ -134,12 +134,12 @@ function identify_potential_missing_links(G, dmat::Matrix{T}, max_link_dist, min
                     # re-check net dist now that we have an actual value, not an upper bound
                     if net_dist_m > min_net_dist
                         push!(links, CandidateLink{T}(
-                            code_for(G, source_edge[1]),
-                            code_for(G, source_edge[2]),
+                            source_edge[1],
+                            source_edge[2],
                             source_dist_from_start,
                             source_dist_to_end,
-                            code_for(G, candidate[1]),
-                            code_for(G, candidate[2]),
+                            candidate[1],
+                            candidate[2],
                             candidate_dist_from_start,
                             candidate_dist_to_end,
                             round(T, length_m),
