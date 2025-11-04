@@ -1,5 +1,5 @@
 @testitem "Scoring" begin
-    import MissingLinks: graph_from_gdal, score_links, CandidateLink, fill_distance_matrix!
+    import MissingLinks: graph_from_gdal, score_links, CandidateLink, fill_distance_matrix!, VertexID
     import DataFrames: DataFrame
     import ArchGDAL as AG
     import Graphs: nv
@@ -21,12 +21,12 @@
 
         links = [
             CandidateLink(
-                fr_edge_src=1,
-                fr_edge_tgt=2,
+                fr_edge_src=VertexID(1),
+                fr_edge_tgt=VertexID(2),
                 fr_dist_from_start=UInt16(1),
                 fr_dist_to_end=UInt16(0),
-                to_edge_src=4,
-                to_edge_tgt=5,
+                to_edge_src=VertexID(4),
+                to_edge_tgt=VertexID(5),
                 to_dist_from_start=UInt16(0),
                 to_dist_to_end=UInt16(1),
                 geographic_length_m=UInt16(1),
@@ -47,7 +47,7 @@
         ])
 
         # each of six origin nodes gets access to three new destinations
-        @test score_links(x -> x < 2000, links, dmat, weights, weights, 2000) == [
+        @test score_links(x -> x < 2000, G, links, dmat, weights, weights, 2000) == [
             sum(weights[1:3] .* sum(weights[4:6])) + # Nodes 1-3 get access to 4-6
             sum(weights[4:6] .* sum(weights[1:3]))
         ]
@@ -91,12 +91,12 @@
 
         links = [
             CandidateLink(
-                fr_edge_src=1,
-                fr_edge_tgt=2,
+                fr_edge_src=VertexID(1),
+                fr_edge_tgt=VertexID(2),
                 fr_dist_from_start=UInt16(0),
                 fr_dist_to_end=UInt16(500),
-                to_edge_src=3,
-                to_edge_tgt=4,
+                to_edge_src=VertexID(3),
+                to_edge_tgt=VertexID(4),
                 to_dist_from_start=UInt16(0),
                 to_dist_to_end=UInt16(500),
                 geographic_length_m=UInt16(500),
@@ -113,7 +113,7 @@
             0b100000
         ])
 
-        @test score_links(x -> x < 1900, links, dmat, weights, weights, 1900) ≈ [
+        @test score_links(x -> x < 1900, G, links, dmat, weights, weights, 1900) ≈ [
             weights[1] * sum(weights[[3, 4]]) +
             weights[2] * weights[4] +
             weights[3] * weights[1] +
@@ -157,12 +157,12 @@
 
         links = [
             CandidateLink(
-                fr_edge_src=2,
-                fr_edge_tgt=4,
+                fr_edge_src=VertexID(2),
+                fr_edge_tgt=VertexID(4),
                 fr_dist_from_start=UInt16(72),
                 fr_dist_to_end=UInt16(45),
-                to_edge_src=5,
-                to_edge_tgt=7,
+                to_edge_src=VertexID(5),
+                to_edge_tgt=VertexID(7),
                 to_dist_from_start=UInt16(72),
                 to_dist_to_end=UInt16(45),
                 geographic_length_m=UInt16(100),
@@ -181,7 +181,7 @@
             0b10000000
         ])
 
-        @test score_links(x -> x < 2000, links, dmat, weights, weights, 2000) == [
+        @test score_links(x -> x < 2000, G, links, dmat, weights, weights, 2000) == [
             weights[1] * sum(weights[[5, 7]]) +
             weights[2] * sum(weights[5:8]) +
             weights[3] * sum(weights[[5, 7, 8]]) +

@@ -3,12 +3,12 @@
 """
 Score a potential missing link
 """
-function compute_link_score(link::CandidateLink, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
+function compute_link_score(G, link::CandidateLink, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
     # note: assumes undirected graph
-    origin_fr_distances = @view dmat[:, link.fr_edge_src]
-    origin_to_distances = @view dmat[:, link.fr_edge_tgt]
-    dest_fr_distances = @view dmat[:, link.to_edge_src]
-    dest_to_distances = @view dmat[:, link.to_edge_tgt]
+    origin_fr_distances = @view dmat[:, code_for(G, link.fr_edge_src)]
+    origin_to_distances = @view dmat[:, code_for(G, link.fr_edge_tgt)]
+    dest_fr_distances = @view dmat[:, code_for(G, link.to_edge_src)]
+    dest_to_distances = @view dmat[:, code_for(G, link.to_edge_tgt)]
 
     new_access = 0.0
     for origin in eachindex(origin_fr_distances)
@@ -82,7 +82,7 @@ within a threshold distance). We do this in several steps:
  4. Reverse the start and end of the link, and repeat
  5. Sum the results
 """
-function score_links(decay_function, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
+function score_links(decay_function, G, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
     # First, score all origins using the base network
     @info "Processing links"
     link_scores = ThreadsX.mapi(enumerate(links)) do (i, link)
@@ -90,8 +90,8 @@ function score_links(decay_function, links, dmat, origin_weights, dest_weights, 
             @info "Scored $i / $(length(links)) links"
         end
         # compute in both directions
-        compute_link_score(link, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m) +
-            compute_link_score(reverse(link), dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
+        compute_link_score(G, link, dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m) +
+            compute_link_score(G, reverse(link), dmat, origin_weights, dest_weights, decay_function, decay_cutoff_m)
     end
 
     return link_scores
