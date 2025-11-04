@@ -48,7 +48,7 @@ function compute_link_score(G, link::CandidateLink, dmat, origin_weights, dest_w
 end
 
 """
-    score_links(decay_function, links, distance_matrix, origin_weights, dest_weights, decay_cutoff_m)
+    score_links(decay_function, graph, links, distance_matrix, origin_weights, dest_weights, decay_cutoff_m)
 
 Score the contribution of each link in `links` to aggregate accessibility, using the decay function and weights specified.
 

@@ -6,7 +6,7 @@ mutable struct SphereOfInfluence
 end
 
 """
-    deduplicate_links(list, distance_matrix, sphere_of_influence_radius)
+    deduplicate_links(graph, list, distance_matrix, sphere_of_influence_radius)
 
 Deduplicate links using a heuristic.
 
