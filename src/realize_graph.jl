@@ -19,19 +19,19 @@ the realized graph should also work).
 The RealizedCandidateLinks in src and dest are references to those in links, so modifying
 a link in any of these will modify it in all of them.
 """
-function index_candidate_links(G, links::Vector{CandidateLink{T}}) where T
+function index_candidate_links(links::Vector{CandidateLink{T}}) where T
     realized = [RealizedCandidateLink{T}(link, nothing, nothing) for link ∈ links]
 
     src = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink{T}}}(Vector{RealizedCandidateLink})
     dest = DefaultDict{NTuple{2, VertexID}, Vector{RealizedCandidateLink{T}}}(Vector{RealizedCandidateLink})
 
     for link in realized
-        v1 = label_for(G, link.link.fr_edge_src)
-        v2 = label_for(G, link.link.fr_edge_tgt)
+        v1 = link.link.fr_edge_src
+        v2 = link.link.fr_edge_tgt
         push!(src[(v1, v2)], link)
 
-        v3 = label_for(G, link.link.to_edge_src)
-        v4 = label_for(G, link.link.to_edge_tgt)
+        v3 = link.link.to_edge_src
+        v4 = link.link.to_edge_tgt
         push!(dest[(v3, v4)], link)
     end
 
@@ -60,7 +60,7 @@ function realize_graph(G, links::Vector{CandidateLink{T}}) where T
     end
 
     # Pass 2: index candidate links by edge
-    realized_links = index_candidate_links(G, links)
+    realized_links = index_candidate_links(links)
 
     # Step 3: loop over edges
 
