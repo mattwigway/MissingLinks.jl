@@ -17,7 +17,7 @@ __OverflowContextDefaultSet = true
 import MetaGraphsNext: MetaGraph, labels, edge_labels, code_for, label_for, neighbor_labels
 import Graphs: Graph, dijkstra_shortest_paths, nv, ne, is_directed, connected_components, strongly_connected_components,
     outneighbors, has_edge, has_vertex, vertices, edges, degree, rem_edge!, rem_vertex!
-import LibSpatialIndex: RTree, insert!, intersects
+import LibSpatialIndex: RTree, insert!, intersects, knn
 import DataFrames: DataFrame, nrow, metadata, metadata!
 import LinearAlgebra: norm2
 import Logging: @info, @warn, @error
@@ -47,6 +47,7 @@ include("simplify_graph.jl")
 include("tntp.jl")
 include("osm.jl")
 include("link_point.jl")
+include("routing.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
