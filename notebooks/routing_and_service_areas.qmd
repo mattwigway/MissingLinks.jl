@@ -1,0 +1,68 @@
+Do some example routes and service areas to show the impact of closing missing links.
+
+```{julia}
+using MissingLinks
+import GeoFormatTypes as GFT
+using DataFrames, GeoDataFrames
+import Rasters
+```
+
+```{julia}
+index = MissingLinks.index_graph_edges(G)
+```
+
+## Mallard Creek Church
+
+```{julia}
+trips = [
+    [(35.33032425670799, -80.73845975760435), (35.32109967955929, -80.73204986655843)],
+    # this one is a perfect example of multiple-link evaluation
+    [(35.32634644474061, -80.74315518553477), (35.319695873650446, -80.73536390055637)],
+    # this one is a great example of a bike route
+    [(35.323812935692814, -80.73533333298839), (35.31205539152477, -80.73375055208304)],
+    [(35.318212791409415, -80.72732575959948), (35.327435448007236, -80.73890167936096)]
+]
+
+ex = DataFrame(map(t -> MissingLinks.route_one_to_one(G, t...; index=index, crs=GFT.EPSG(32119)), trips))
+ex.loc .= "Mallard Creek Church"
+ex.trip = 1:4
+ex.type .= "existing"
+```
+
+```{julia}
+# this is a clunky and fragile way to extract the relevant link
+Gmallard = realize_graph(G, [candidate_links[1557]])
+```
+
+```{julia}
+post = DataFrame(map(t -> MissingLinks.route_one_to_one(Gmallard, t...; index=index, crs=GFT.EPSG(32119)), trips))
+post.loc .= "Mallard Creek Church"
+post.trip = 1:4
+post.type .= "post"
+```
+
+### And with both
+
+```{julia}
+Gmallard2 = realize_graph(G, candidate_links[[1557, 1558]])
+```
+
+```{julia}
+post2 = DataFrame(map(t -> MissingLinks.route_one_to_one(Gmallard2, t...; index=index, crs=GFT.EPSG(32119)), trips))
+post2.loc .= "Mallard Creek Church"
+post2.trip = 1:4
+post2.type .= "post2"
+```
+
+```{julia}
+gdf = vcat(ex, post, post2)
+metadata!(gdf, "geometrycolumns", (:geom,))
+GeoDataFrames.write(joinpath(DATA_PATH, "test_route.gpkg"), gdf)
+```
+
+```{julia}
+access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[1557], dest_weights, 1609 * 2; index=index)
+Rasters.setcrs(access, GFT.EPSG(32119))
+Rasters.setmappedcrs(access, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "mallard_ck.tif"), access, force=true)
+```
