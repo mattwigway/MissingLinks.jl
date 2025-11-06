@@ -112,7 +112,7 @@ function route_one_to_one(G, origin, dest; crs=nothing, index=nothing, max_snap_
         push!.(Ref(coords), get_xy(geom_between(reverse_geom(G[origin_edge...].geom), 0, odist_from_end))[begin+1:end])
     else
         # no partial, just the vertex
-        push!(coords, G[vx...])
+        push!(coords, collect(G[vx]))
     end
 
     return OneToOneRouteResult(
