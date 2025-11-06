@@ -50,6 +50,10 @@ function regional_access_oneway(decay_func, G, dmat, link::CandidateLink, weight
         # were supplied.
         # TODO this won't work on digraphs
         for other_v in eachindex(weights)
+            if weights[other_v] == 0
+                continue # can't affect access 
+            end
+
             distance_from_vertex_to_start_of_link = min(
                 add_unless_typemax(dmat[other_v, code_for(G, link.fr_edge_src)], link.fr_dist_from_start),
                 add_unless_typemax(dmat[other_v, code_for(G, link.fr_edge_tgt)], link.fr_dist_to_end)
