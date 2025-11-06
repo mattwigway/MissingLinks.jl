@@ -1,6 +1,7 @@
 module MissingLinks
 # use checked math throughout - since we're working with UInt16s overflow is possible source of error
 import OverflowContexts
+import OverflowContexts: checked_add
 
 #@default_checked
 # @default_checked doesn't work on v1.12 yet, because of a failing precondition that no longer applies
@@ -29,6 +30,8 @@ import DataStructures: DefaultDict
 import CSV, Dates
 import OpenStreetMapPBF: Way, scan_nodes, scan_ways
 import GeoFormatTypes as GFT
+import Rasters
+import ProgressMeter: @showprogress
 
 include("graph.jl")
 include("candidate_link.jl")
@@ -48,6 +51,7 @@ include("tntp.jl")
 include("osm.jl")
 include("link_point.jl")
 include("routing.jl")
+include("regional_access.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
