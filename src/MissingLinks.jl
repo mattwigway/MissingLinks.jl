@@ -52,6 +52,7 @@ include("osm.jl")
 include("link_point.jl")
 include("routing.jl")
 include("regional_access.jl")
+include("isochrone.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
