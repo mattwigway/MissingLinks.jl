@@ -163,6 +163,10 @@ want to add scores to your output.
 """
 function links_to_gis(G, links, pairs...)
     gdf = DataFrame(links)
+    gdf.fr_edge_src = repr.(gdf.fr_edge_src)
+    gdf.fr_edge_tgt = repr.(gdf.fr_edge_tgt)
+    gdf.to_edge_src = repr.(gdf.to_edge_src)
+    gdf.to_edge_tgt = repr.(gdf.to_edge_tgt)
 
     gdf.network_length_m = ifelse.(
         gdf.network_length_m .≠ typemax(eltype(gdf.network_length_m)),
@@ -172,8 +176,8 @@ function links_to_gis(G, links, pairs...)
 
     # add geometry
     gdf.geometry = map(links) do link
-        startg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[label_for(G, link.fr_edge_src), label_for(G, link.fr_edge_tgt)].geom), link.fr_dist_from_start))
-        endg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[label_for(G, link.to_edge_src), label_for(G, link.to_edge_tgt)].geom), link.to_dist_from_start))
+        startg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.fr_edge_src, link.fr_edge_tgt].geom), link.fr_dist_from_start))
+        endg = GeoInterface.convert(ArchGDAL, LibGEOS.interpolate(gdal_to_geos(G[link.to_edge_src, link.to_edge_tgt].geom), link.to_dist_from_start))
         ArchGDAL.createlinestring([
             # this can't possibly be the best way to do this
 

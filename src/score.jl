@@ -12,6 +12,10 @@ function compute_link_score(G, link::CandidateLink, dmat, origin_weights, dest_w
 
     new_access = 0.0
     for origin in eachindex(origin_fr_distances)
+        if origin_weights[origin] == 0
+            continue
+        end
+
         # how far is this origin from the start of this link?
         origin_distance = min(
             add_unless_typemax(origin_fr_distances[origin], link.fr_dist_from_start),
@@ -24,6 +28,10 @@ function compute_link_score(G, link::CandidateLink, dmat, origin_weights, dest_w
             # It is close enough it could possibly provide access to something (distance to start of link
             # plus length of link itself)
             for dest in eachindex(dest_fr_distances)
+                if dest_weights[dest] == 0
+                    continue
+                end
+
                 dest_distance = min(
                     add_unless_typemax(dest_fr_distances[dest], link.to_dist_from_start),
                     add_unless_typemax(dest_to_distances[dest], link.to_dist_to_end)

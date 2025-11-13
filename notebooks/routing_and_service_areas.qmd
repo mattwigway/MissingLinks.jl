@@ -1,0 +1,180 @@
+Do some example routes and service areas to show the impact of closing missing links.
+
+```{julia}
+using MissingLinks
+import GeoFormatTypes as GFT
+using DataFrames, GeoDataFrames
+import Rasters
+```
+
+```{julia}
+index = MissingLinks.index_graph_edges(G)
+```
+
+## Mallard Creek Church
+
+```{julia}
+trips = [
+    [(35.33032425670799, -80.73845975760435), (35.32109967955929, -80.73204986655843)],
+    # this one is a perfect example of multiple-link evaluation
+    [(35.32634644474061, -80.74315518553477), (35.319695873650446, -80.73536390055637)],
+    # this one is a great example of a bike route
+    [(35.323812935692814, -80.73533333298839), (35.31205539152477, -80.73375055208304)],
+    [(35.318212791409415, -80.72732575959948), (35.327435448007236, -80.73890167936096)]
+]
+
+ex = DataFrame(map(t -> MissingLinks.route_one_to_one(G, t...; index=index, crs=GFT.EPSG(32119)), trips))
+ex.loc .= "Mallard Creek Church"
+ex.linkfid .= 1557
+ex.trip = 1:4
+ex.type .= "Existing conditions"
+```
+
+```{julia}
+# this is a clunky and fragile way to extract the relevant link
+Gmallard = realize_graph(G, [candidate_links[1557]])
+```
+
+```{julia}
+post = DataFrame(map(t -> MissingLinks.route_one_to_one(Gmallard, t...; index=index, crs=GFT.EPSG(32119)), trips))
+post.loc .= "Mallard Creek Church"
+post.linkfid .= 1557
+post.trip = 1:4
+post.type .= "With link"
+```
+
+### Isochrone
+
+```{julia}
+sface = MissingLinks.distance_surface(G, matrix, (35.32387548000563, -80.7360663361862); index=index, crs=GFT.EPSG(32119))
+Rasters.setcrs(sface, GFT.EPSG(32119))
+Rasters.setmappedcrs(sface, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "linkmaps", "isochrone.tif"), sface, force=true)
+```
+
+### And with both
+
+```{julia}
+Gmallard2 = realize_graph(G, candidate_links[[1557, 1558]])
+```
+
+```{julia}
+post2 = DataFrame(map(t -> MissingLinks.route_one_to_one(Gmallard2, t...; index=index, crs=GFT.EPSG(32119)), trips))
+post2.loc .= "Mallard Creek Church"
+post2.trip = 1:4
+post2.linkfid .= 1557
+post2.type .= "With two links"
+```
+
+```{julia}
+access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[1557], dest_weights, 1609 * 2; index=index)
+Rasters.setcrs(access, GFT.EPSG(32119))
+Rasters.setmappedcrs(access, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "mallard_ck.tif"), access, force=true)
+```
+
+## Muskogee
+
+```{julia}
+trips = [
+    [(35.21288749266325, -80.73135743299869), (35.208208565428805, -80.72620906152794)],
+    [(35.211725828048344, -80.72816840955052), (35.200821546841176, -80.72723912932865)],
+    [(35.210364041454966, -80.73175456045892), (35.21518398720291, -80.73468728180494)]
+]
+
+muskex = DataFrame(map(t -> MissingLinks.route_one_to_one(G, t...; index=index, crs=GFT.EPSG(32119)), trips))
+muskex.loc .= "Muskogee"
+muskex.linkfid .= 86
+muskex.trip = 1:3
+muskex.type .= "Existing conditions"
+
+Gmusk = realize_graph(G, candidate_links[[86]])
+
+muskl = DataFrame(map(t -> MissingLinks.route_one_to_one(Gmusk, t...; index=index, crs=GFT.EPSG(32119)), trips))
+muskl.loc .= "Muskogee"
+muskl.linkfid .= 86
+muskl.trip = 1:3
+muskl.type .= "With link"
+
+```
+
+```{julia}
+access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[86], dest_weights, 1609 * 2; index=index)
+Rasters.setcrs(access, GFT.EPSG(32119))
+Rasters.setmappedcrs(access, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "muskogee.tif"), access, force=true)
+```
+
+## Louise and Otts
+
+fid 1740
+
+```{julia}
+trips = [
+    [(35.227206828635005, -80.81708331814079), (35.22220801694307, -80.8217732249962)],
+    [(35.227206828635005, -80.81708331814079), (35.21001274329276, -80.82198227596453)]
+]
+
+louiseex = DataFrame(map(t -> MissingLinks.route_one_to_one(G, t...; index=index, crs=GFT.EPSG(32119)), trips))
+louiseex.loc .= "louise"
+louiseex.linkfid .= 1740
+louiseex.trip = 1:2
+louiseex.type .= "Existing conditions"
+
+Glouise = realize_graph(G, candidate_links[[1740]])
+
+louisel = DataFrame(map(t -> MissingLinks.route_one_to_one(Glouise, t...; index=index, crs=GFT.EPSG(32119)), trips))
+louisel.loc .= "louise"
+louisel.linkfid .= 1740
+louisel.trip = 1:2
+louisel.type .= "With link"
+```
+
+
+```{julia}
+access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[1740], dest_weights, 1609 * 2; index=index)
+Rasters.setcrs(access, GFT.EPSG(32119))
+Rasters.setmappedcrs(access, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "linkmaps", "louise.tif"), access, force=true)
+```
+## Commonwealth
+
+fid 351
+
+```{julia}
+trips = [
+    [(35.19944276370131, -80.78534395543754), (35.212334841688985, -80.78202703945765)]
+]
+
+commex = DataFrame(map(t -> MissingLinks.route_one_to_one(G, t...; index=index, crs=GFT.EPSG(32119)), trips))
+commex.loc .= "Commonwealth"
+commex.linkfid .= 351
+commex.trip .= 1
+commex.type .= "Existing conditions"
+
+Gcomm = realize_graph(G, candidate_links[[351]])
+
+comml = DataFrame(map(t -> MissingLinks.route_one_to_one(Gcomm, t...; index=index, crs=GFT.EPSG(32119)), trips))
+comml.loc .= "Commonwealth"
+comml.linkfid .= 351
+comml.trip .= 1
+comml.type .= "With link"
+```
+
+```{julia}
+access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[351], dest_weights, 1609 * 2; index=index)
+Rasters.setcrs(access, GFT.EPSG(32119))
+Rasters.setmappedcrs(access, GFT.EPSG(32119))
+write(joinpath(DATA_PATH, "linkmaps", "commonwealth.tif"), access, force=true)
+```
+
+
+```{julia}
+gdf = vcat(ex, post, post2, muskex, muskl, commex, comml, louiseex, louisel)
+gdf.miles = gdf.distance ./ 1609
+metadata!(gdf, "geometrycolumns", (:geom,))
+GeoDataFrames.write(joinpath(DATA_PATH, "test_route.gpkg"), gdf, crs=GFT.EPSG(32119))
+```
+
+```{julia}
+```
