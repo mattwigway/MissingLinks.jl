@@ -16,6 +16,8 @@ config = parseTOML(here::here("config.toml"))
 
 HIGH_PRIORITY=3
 MEDIUM_PRIORITY=2
+
+in_weight = 0
 ```
 
 ## Read data
@@ -27,11 +29,15 @@ Read in all of the data files we've created for different destination types, and
 ```{r}
 downtown = read_sf(file.path(config$data_path, "data", "destinations", "charlotte_cbd.gpkg")) %>%
     mutate(name="Uptown Charlotte", type="Downtown/CBD", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=F)
+
+in_weight = in_weight + sum(downtown$weight)
 ```
 
 ```{r}
 food = read_sf(file.path(config$data_path, "data", "destinations", "healthy_food.gpkg")) %>%
     mutate(type="Healthy food option", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(food$weight)
 ```
 
 ```{r}
@@ -42,6 +48,8 @@ hospitals = read_sf(file.path(config$data_path, "data", "destinations", "nchospi
     select(DBA_Name) %>%
     rename(name="DBA_Name") %>%
     mutate(type="Hospital", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(hospitals$weight)
 ```
 
 ```{r}
@@ -49,6 +57,8 @@ major_emp = read_sf(file.path(config$dataaxle_path, "mecklenburg_large_employers
     select(COMPANY) %>%
     mutate(name=str_to_title(COMPANY), type="Major employment", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T) %>%
     select(name, weight, priority, type, snap_to_parcels)
+
+in_weight = in_weight + sum(major_emp$weight)
 ```
 
 ```{r}
@@ -57,6 +67,8 @@ park_ride = read_sf(file.path(config$data_path, "data", "destinations", "CATS_Pa
     rename(name="Name") %>%
     select(name) %>%
     mutate(type="Park and ride", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(park_ride$weight)
 ```
 
 ```{r}
@@ -66,6 +78,8 @@ schools = read_sf(file.path(config$data_path, "data", "destinations", "Schools_(
     select(name) %>%
     mutate(type="School", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T) %>%
     filter(!st_is_empty(geometry)) # three schools have empty geometries. I think they are programs colocated with another school.
+
+in_weight = in_weight + sum(schools$weight)
 ```
 
 ```{r}
@@ -73,12 +87,16 @@ sports_ent = read_xlsx(file.path(config$data_path, "data", "destinations", "Sign
     st_as_sf(coords=c("Long", "Lat"), crs=4326) %>%
     rename(name="Name") %>%
     mutate(type="Sports and entertainment", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(sports_ent$weight)
 ```
 
 ```{r}
 transit_center = read_sf(file.path(config$data_path, "data", "destinations", "transit_centers.gpkg")) %>%
     mutate(name="Transit center", type="Transit center", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=F) %>%
     st_transform(4326)
+
+in_weight = in_weight + sum(transit_center$weight)
 ```
 
 ```{r}
@@ -87,6 +105,8 @@ uni = read_sf(file.path(config$data_path, "data", "destinations", "colleges.gpkg
     rename(name="NAME") %>%
     select(name) %>%
     mutate(type="College/university", priority="High", weight=HIGH_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(uni$weight)
 ```
 
 ### Medium priority locations
@@ -97,6 +117,8 @@ bus_stops = read_sf(file.path(config$data_path, "data", "destinations", "Bus_Sto
     rename(name="StopDesc") %>%
     select(name) %>%
     mutate(type="Bus stop", priority="Medium", weight=MEDIUM_PRIORITY, snap_to_parcels=F)
+
+in_weight = in_weight + sum(bus_stops$weight)
 ```
 
 ```{r}
@@ -105,12 +127,15 @@ lr_stops = read_sf(file.path(config$data_path, "data", "destinations", "lr_stops
     st_transform(4326) %>%
     mutate(type="Light Rail Stop", priority="Medium", weight=MEDIUM_PRIORITY, snap_to_parcels=F)
 
+in_weight = in_weight + sum(lr_stops$weight)
 ```
 
 ```{r}
 hotels = read_sf(file.path(config$dataaxle_path, "mecklenburg_hotels.gpkg")) %>%
     mutate(name=str_to_title(COMPANY), weight=MEDIUM_PRIORITY, snap_to_parcels=T, priority="Medium", type="Hotel") %>%
     select(name, weight, priority, type, snap_to_parcels)
+
+in_weight = in_weight + sum(hotels$weight)
 ```
 
 ```{r}
@@ -120,6 +145,8 @@ libraries = read_sf(file.path(config$data_path, "data", "destinations", "Librari
     rename(name="Name") %>%
     select(name) %>%
     mutate(type="Library", priority="Medium", weight=MEDIUM_PRIORITY, snap_to_parcels=T)
+
+in_weight = in_weight + sum(libraries$weight)
 ```
 
 ```{r}
@@ -128,6 +155,8 @@ medical = read_sf(file.path(config$data_path, "data", "destinations", "medical_p
     st_transform(4326) %>%
     # /5 to correct b/c we have providers and want facilities/buildings
     mutate(name="Medical provider", type="Medical provider", priority="Medium", weight=MEDIUM_PRIORITY/5, snap_to_parcels=T)
+
+in_weight = in_weight + sum(medical$weight)
 ```
 
 ```{r}
@@ -135,6 +164,8 @@ medical = read_sf(file.path(config$data_path, "data", "destinations", "medical_p
 religious = read_sf(file.path(config$dataaxle_path, "mecklenburg_church.gpkg")) %>%
     mutate(name=str_to_title(COMPANY), weight=MEDIUM_PRIORITY, snap_to_parcels=T, priority="Medium", type="Religious/Civic") %>%
     select(name, weight, priority, type, snap_to_parcels)
+
+in_weight = in_weight + sum(religious$weight)
 ```
 
 ```{r}
@@ -142,6 +173,8 @@ civic = read_sf(file.path(config$data_path, "data", "destinations", "recreation_
     rename(name="Name") %>%
     mutate(type="Religious/Civic", priority="Medium", weight=MEDIUM_PRIORITY, snap_to_parcels=T) %>%
     select(name, weight, priority, type, snap_to_parcels)
+
+in_weight = in_weight + sum(civic$weight)
 ```
 
 ```{r}
@@ -149,6 +182,8 @@ retail = read_sf(file.path(config$dataaxle_path, "mecklenburg_retail.gpkg")) %>%
     # /5 to convert retail points to retail centers, roughly
     mutate(name=str_to_title(COMPANY), weight=MEDIUM_PRIORITY / 5, snap_to_parcels=T, priority="Medium", type="Retail") %>%
     select(name, weight, priority, type, snap_to_parcels)
+
+in_weight = in_weight + sum(retail$weight)
 ```
 
 
@@ -219,7 +254,8 @@ These are all just outside Mecklenburg County, visualized in GIS to confirm.
 ```{r}
 snap_pts %>%
     filter(nearest_dist >= units::as_units(100, "m")) %>%
-    write_sf(file.path(config$data_path, "data", "destinations", "snap_failures.gpkg"))
+    ggplot() +
+        geom_sf()
 ```
 
 ```{r}
@@ -238,5 +274,8 @@ weighted_parcels = filter(parcels, weight > 0) %>%
 write_sf(weighted_parcels, file.path(config$data_path, "data", "destinations", "weighted_parcels.gpkg"))
 ```
 
+## Sanity check
 ```{r}
+out_weight = sum(weighted_parcels$dest_weight) + sum(point_locations[!point_locations$snap_to_parcels,]$weight) + sum(snap_pts[snap_pts$nearest_dist >= units::as_units(100, "m"),]$weight)
+stopifnot(all.equal(out_weight, in_weight))
 ```
