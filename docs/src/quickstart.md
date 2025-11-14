@@ -198,7 +198,7 @@ The new links that cross the road on the east are most valuable from an accessib
 
 ## Link-level analyses
 
-To understand the impact of an individual link, MissingLinks provides three functions: routing, isochrones, and regional access calculations. Each one is a higher level of aggregation than the last.
+To understand the impact of an individual link, MissingLinks provides two functions: routing and regional access calculations (isochrone support is planned). Each one is a higher level of aggregation than the last.
 
 First, we'll find the highest scoring link, though these same procedures would work with any link. We also plot it so we can see what we're working with:
 
@@ -273,25 +273,6 @@ metadata!(routes, "geometrycolumns", (:geom,))
 GeoDataFrames.write("routes.gpkg", routes, crs=GeoFormatTypes.EPSG(32119))
 ```
 
-<!--
-TODO fix isochrone to smartly use links.
-
-### Isochrones
-
-The next level of aggregation is the isochrone. It shows all the places you can get to from a single point, with and without the link. We can create isochrones with the `distance_surface` function, which creates a raster grid around the origin showing the distance to each location.
-
-First, we'll create an isochrone from the start of the trip above, without the link. By default it will include distances up to 5000. As before, adjust the CRS to the appropriate CRS for your region.
-
-```
-surface = distance_surface(graph, matrix, (35.3393, -80.8620), index=index, crs=GeoFormatTypes.EPSG(32119))
-```
-
-Next, we'll create an isochrone based on the graph including the link (which we built above):
-
-```
-surface = distance_surface(graph_with_link, matrix, (35.3393, -80.8620), index=index_with_link, crs=GeoFormatTypes.EPSG(32119))
-```
--->
 
 ### Regional access
 
