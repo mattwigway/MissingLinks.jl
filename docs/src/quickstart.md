@@ -191,10 +191,10 @@ We can also use it in further plotting. For example, this plot shows the top fiv
 ```@example main
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
 # set line width wider to make the links easier to see
-plot!(links_geo[competerank(links_geo.score) .<= 5, :geometry], color="#4B9CD3", lw=2)
+plot!(links_geo[competerank(links_geo.score, rev=true) .<= 5, :geometry], color="#4B9CD3", lw=2)
 ```
 
-As we might expect, the new links that connect the completely disconnected neighborhood on the west side are most valuable. Those that shorten trips in already connected areas are less valuable.
+The new links that cross the road on the east are most valuable from an accessibility standpoint. This is likely in part due to the accessibility metric we chose; the links in the west are simply too far from the destinations to be meaningful for increasing access within 1 mile.
 
 ## Link-level analyses
 
