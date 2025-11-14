@@ -10,7 +10,7 @@ spatial data manipulation, the Plots library for visualization, the Graphs libra
 Press `]` to enter Pkg-mode.
 
 ```
-add GeoDataFrames Plots Graphs StatsBase MissingLinks
+add GeoDataFrames Plots Graphs StatsBase GeoFormatTypes MissingLinks DataFrames
 ```
 
 You'll run this code in the REPL (in VSCode, choose View -> Command Palette and search for "Julia: Start REPL"). All of the other code you'll run should be in your notebook interface so you can save it. While it is optional, I do recommend [creating a Julia environment](https://pkgdocs.julialang.org/v1/environments/) to keep MissingLinks code separate from any other Julia projects you may work on.
@@ -21,14 +21,14 @@ Press backspace to exit Pkg-mode.
 Once packages are installed, we are ready to load them.
 
 ```@example main
-using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase
+using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase, GeoFormatTypes, DataFrames
 ```
 
 If you're using Quarto and VSCode, place this code between triple-backticks to create a Julia cell, then hover over it and click "run cell":
 
 ````
 ```{julia}
-using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase
+using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase, GeoFormatTypes, DataFrames
 ```
 ````
 
@@ -193,3 +193,76 @@ plot!(links_geo[competerank(links_geo.score) .<= 5, :geometry], color="#4B9CD3",
 ```
 
 As we might expect, the new links that connect the completely disconnected neighborhood on the west side are most valuable. Those that shorten trips in already connected areas are less valuable.
+
+## Link-level analyses
+
+To understand the impact of an individual link, MissingLinks provides three functions: routing, isochrones, and regional access calculations. Each one is a higher level of aggregation than the last.
+
+First, we'll find the highest scoring link, though these same procedures would work with any link. We also plot it so we can see what we're working with:
+
+```@example main
+best_link = links[argmax(link_scores)]
+
+plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
+# set line width wider to make the link easier to see
+plot!(links_geo.geometry[argmax(link_scores)], color="#4B9CD3", lw=4)
+```
+
+The link is a crossing in the southeast part of the graph.
+
+Next, we'll create a route from one point to another (specified as latitude/longitude):
+
+```@example main
+# all routing functions require an edge index
+# we can build it once and cache it; this is optional
+# but vastly improves performance with large graphs
+index = MissingLinks.index_graph_edges(graph)
+
+# now, we can do the route without the link
+route_without_link = route_one_to_one(
+    graph,
+    (35.3408, -80.8555), # origin
+    (35.3393, -80.8620), # destination
+    crs=GeoFormatTypes.EPSG(32119), # the projection of your graph
+    index=index # the prebuilt index
+)
+```
+
+### Including the link
+
+`route_one_to_one` always routes only on the edges in the graph. To use a potential link, we need to create a new graph that has the link in it. We can use `realize_graph` to create a new graph with the link added (we can also specify multiple links, by separating them with commas inside the `[]`:
+
+```@example main
+graph_with_link = realize_graph(graph, [best_link])
+```
+
+And then we can use that to create the route. If you are only doing one route, you could leave off the line that creates the index, and remove the `index` parameter to `route_one_to_one`; the index will then be automatically created.
+
+```@example main
+index_with_link = MissingLinks.index_graph_edges(graph_with_link)
+
+route_with_link = route_one_to_one(
+    graph_with_link,
+    (35.3408, -80.8555), # origin
+    (35.3393, -80.8620), # destination
+    crs=GeoFormatTypes.EPSG(32119), # the projection of your graph
+    index=index_with_link # the prebuilt index
+)
+```
+
+And we can plot the result, with the original route in blue and the new one in red:
+
+```@example main
+plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
+plot!(route_without_link.geom, color="#4B9CD3", lw=4)
+plot!(route_with_link.geom, color="#a24040", lw=4)
+```
+
+We can also write the routes out for use in GIS (in this case, to `routes.gpkg`), by converting to a DataFrame and saving to a GIS file:
+
+```@example main
+routes = DataFrame([route_without_link, route_with_link])
+metadata!(routes, "geometrycolumns", (:geom,))
+# Change the CRS code to the CRS of your graph so the routes display properly in GIS
+GeoDataFrames.write("routes.gpkg", routes, crs=GeoFormatTypes.EPSG(32119))
+```
