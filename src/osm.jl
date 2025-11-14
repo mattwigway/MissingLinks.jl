@@ -55,32 +55,22 @@ a link should be included using arbitrary Julia code.
 
 """
 @kwdef struct TraversalPermissionSettings
-    walkable_tags::Set{Tag}
-    not_walkable_tags::Set{Tag}
-    override_walkable_tags::Set{Tag}
-end
-
-# default settings
-function TraversalPermissionSettings()
-    # if you change these update the docs above!!!!!!
-    walkable_tags=TraversalPermissionSettings(
-        Set([
+    walkable_tags::Set{Tag} = Set([
             ("highway" .=> ["footway", "cycleway", "pedestrian", "track", "sidewalk", "service", "road", "steps", "path", "crossing", "residential"])...,
             ("sidewalk" .=> ["yes", "both", "left", "right"])...,
             "sidewalk:left" .=> "yes",
             "sidewalk:right" .=> "yes",
             "sidewalk:both" .=> "yes"
-        ]),
-        non_walkable_tags=Set([
+        ])
+    not_walkable_tags::Set{Tag} = Set([
             "foot" => "no",
             "access" => "no"
-        ]),
-        override_walkable_tags=Set([
+        ])
+    override_walkable_tags::Set{Tag} = Set([
             # TODO currently foot=yes on e.g. an arterial that doesn't have a sidewalk overrides
             # that we don't want to walk there generally? 
             ("foot" .=> ["yes", "designated"])...
         ])
-    )
 end
 
 """
