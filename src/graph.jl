@@ -405,6 +405,12 @@ function remove_tiny_islands(G, min_vertices_to_retain)
     return G2
 end
 
+"""
+    index_graph_edges(G)
+
+Index the edges of a graph. Return a tuple with an RTree and a vector of edge IDs (themselves tuples of VertexID)
+that go with each integer index in the RTree.
+"""
 function index_graph_edges(G)
     edgeidx = RTree(2)
     edges = Vector{NTuple{2, VertexID}}()

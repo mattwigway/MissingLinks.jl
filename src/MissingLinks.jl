@@ -58,9 +58,10 @@ include("spidx.jl") # workaround for https://github.com/JuliaGeo/LibSpatialIndex
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
 # rather than MissingLinks.VertexID(42, :node)
 export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, deduplicate_links,
-    score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, index_graph_edges, service_area,
+    score_links, create_graph_weights, semi_to_fully_noded, add_short_edges!, service_area,
     graph_to_gis, graph_to_graphml, links_to_gis, find_dead_ends, find_disconnected_crossings, fill_distance_matrix!,
-    nodes_to_gis, realize_graph, collapse_realized_graph!, VertexID
+    nodes_to_gis, realize_graph, collapse_realized_graph!, VertexID, regional_access, route_one_to_one, distance_surface,
+    graph_from_osm, TraversalPermissionSettings
 
-@compat public remove_elevation!, get_example_data, write_tntp, TraversalPermissionSettings, is_traversable
+@compat public remove_elevation!, get_example_data, write_tntp, is_traversable, index_graph_edges
 end

@@ -1,9 +1,3 @@
-"""
-    regional_access(decay_func, G, dmat, link; resolution=50)
-
-Perform a regional access analysis (change in access for each point) as a result of the link. Return
-a Rasters.jl raster with the values at each point in the area.
-"""
 function regional_access_oneway(decay_func, G, dmat, link::CandidateLink, weights, decay_cutoff; resolution=25, index=nothing, max_snap_dist=100)
     # first, figure out extent of analysis
     fredge = G[link.fr_edge_src, link.fr_edge_tgt].geom
@@ -86,6 +80,13 @@ function regional_access_oneway(decay_func, G, dmat, link::CandidateLink, weight
     return rast
 end
 
+"""
+    regional_access(decay_func, G, dmat, link, weights, decay_cutoff; resolution=50)
+
+Perform a regional access analysis (change in access to `weights` for each point) as a result of the link. Return
+a Rasters.jl raster with the values at each point in the area around the link. `decay_cutoff` is the distance (in
+coordinate system units) after which additional destinations have no impact on accessibility.
+"""
 function regional_access(decay_func, G, dmat, link::CandidateLink, weights, decay_cutoff; resolution=50, index=nothing, max_snap_dist=100)
     index = isnothing(index) ? index_graph_edges(G) : index
 

@@ -26,7 +26,9 @@ end
 Do a one-to-one route. If CRS is specified, origin and dest can be in lat-lon (not lon-lat) coordinates
 and will be reprojected to the specified CRS before routing.
 
-If you're doing many routes, setting `index` to the result of [index_graph_edges](@ref) will speed up results.
+If you're doing many routes, setting `index` to the result of [`MissingLinks.index_graph_edges``](@ref) will speed up results.
+
+If you want to do a route on a graph with candidate link(s) included, see [`realize_graph``](@ref).
 """
 function route_one_to_one(G, origin, dest; crs=nothing, index=nothing, max_snap_dist=100)
     if isnothing(index)

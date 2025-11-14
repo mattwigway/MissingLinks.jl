@@ -1,9 +1,60 @@
 const Tag = Pair{String, String}
 
 """
-Settings about what streets are considered walkable
+Settings about what streets are considered walkable. Contains sets
+walkable_tags, not_walkable_tags, and override_walkable_tags. Each of these
+is a pair "key"=>"value" (e.g. "highway"=>"footway"). A way is considered
+walkable if it (has a tag that is in walkable_tags and does not have a tag in
+not_walkable_tags) or (has a tag that is in override_walkable_tags). override_walkable_tags
+exists to handle roads that normally would not be considered walkable, but have
+e.g. "foot"="yes".
+
+The default tags are below. You can modify these after constructing a TraversalPermissionsSettings,
+by directly adding/removing from the sets, or you can replace them completely by constructing the settings with arguments,
+e.g.
+
+    TraversalPermissionSettings(
+        walkable_tags=Set(["highway"=>"footway"]),
+        not_walkable_tags=Set(["foot"=>"no"]),
+        override_walkable_tags=Set(["foot"=>"designated"])
+    )
+
+If even that is not enough control, you can create your type and define [MissingLinks.is_traversable](@ref) to determine if
+a link should be included using arbitrary Julia code.
+
+## Walkable tags
+
+- highway=road
+- highway=footway
+- sidewalk=yes
+- highway=path
+- highway=sidewalk
+- highway=cycleway
+- highway=service
+- highway=residential
+- sidewalk=both
+- sidewalk=left
+- sidewalk:left=yes
+- sidewalk:right=yes
+- sidewalk:both=yes
+- highway=track
+- highway=pedestrian
+- sidewalk=right
+- highway=crossing
+- highway=steps
+
+## Non-walkable tags
+
+- foot=no
+- access=no
+
+## Override walkable tags
+
+- foot=yes
+- foot=designated
+
 """
-struct TraversalPermissionSettings
+@kwdef struct TraversalPermissionSettings
     walkable_tags::Set{Tag}
     not_walkable_tags::Set{Tag}
     override_walkable_tags::Set{Tag}
@@ -11,7 +62,8 @@ end
 
 # default settings
 function TraversalPermissionSettings()
-    TraversalPermissionSettings(
+    # if you change these update the docs above!!!!!!
+    walkable_tags=TraversalPermissionSettings(
         Set([
             ("highway" .=> ["footway", "cycleway", "pedestrian", "track", "sidewalk", "service", "road", "steps", "path", "crossing", "residential"])...,
             ("sidewalk" .=> ["yes", "both", "left", "right"])...,
@@ -19,18 +71,24 @@ function TraversalPermissionSettings()
             "sidewalk:right" .=> "yes",
             "sidewalk:both" .=> "yes"
         ]),
-        Set([
+        non_walkable_tags=Set([
             "foot" => "no",
             "access" => "no"
         ]),
-        Set([
+        override_walkable_tags=Set([
             # TODO currently foot=yes on e.g. an arterial that doesn't have a sidewalk overrides
             # that we don't want to walk there generally? 
-            "foot" => "yes"
+            ("foot" .=> ["yes", "designated"])...
         ])
     )
 end
 
+"""
+    is_traversable(settings, way)
+
+Based on `settings`, should `way` be included in the graph? Override if you are creating
+custom traversal permissions settings objects.
+"""
 function is_traversable(settings, way::Way)
     traversable = false
     override_no = false
@@ -48,6 +106,19 @@ function is_traversable(settings, way::Way)
     return override_yes || traversable && !override_no
 end
 
+"""
+    graph_from_osm(pbf, settings, projection)
+
+Build a graph from OpenStreetMap PBF data. `pbf` should be the path to a PBF file.
+
+`settings` is a an object that determines what edges are considered traversable. It should
+have a method defined `MissingLinks.is_traversable(settings, way::Way)` where way is a Way object
+from OpenStreetMapPBF.jl, which returns true if a way should be included in the graph. The simplest
+is to use a [TraversalPermissionSettings]{@ref} object.
+
+MissingLinks always works with Euclidean coordinates, so coordinates need to be projected. `projection` is a
+`GeoFormatTools` coordinate system to project the OSM data to. e.g. for North Carolina I use GeoFormatTools.EPSG(32119).
+"""
 function graph_from_osm(pbf, settings, projection)
     nodes = Dict{Int64, NTuple{2, Float64}}()
     nodes_encountered = Set{Int64}()

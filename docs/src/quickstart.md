@@ -5,14 +5,18 @@ In this page, we will quickly work through the Julia code necessary to load a ne
 ## Load packages
 
 First, we need to load some packages. The Missing Links code is distributed as a Julia package, so we need to load MissingLinks. We also need to load the GeoDataFrames package for
-spatial data manipulation, the Plots library for visualization, the Graphs library for working with graph data structures, the StatsBase library for statistics, and the Mmap package for working with memory-mapped files. Most of these packages are available from the Julia general registry, and can be installed [with the Pkg-mode add command](https://docs.julialang.org/en/v1/stdlib/Pkg/). Mmap is built into Julia and does not need to be installed. MissingLinks, however, is not in the general registry; to install it you should enter Pkg-mode (press `]`) and then type `add https://github.com/mattwigway/MissingLinks.jl`. In a nutshell, you will run this code, after entering package mode by pressing `]`. You'll run this code in the REPL (in VSCode, choose View -> Command Palette and search for "Julia: Start REPL"). All of the other code you'll run should be in your notebook interface so you can save it. While it is optional, I do recommend [creating a Julia environment](https://pkgdocs.julialang.org/v1/environments/) to keep MissingLinks code separate from any other Julia projects you may work on.
+spatial data manipulation, the Plots library for visualization, the Graphs library for working with graph data structures, the StatsBase library for statistics, and the Mmap package for working with memory-mapped files. Most of these packages are available from the Julia general registry, and can be installed [with the Pkg-mode add command](https://docs.julialang.org/en/v1/stdlib/Pkg/). Mmap is built into Julia and does not need to be installed. 
+
+Press `]` to enter Pkg-mode.
 
 ```
-add GeoDataFrames Plots Graphs StatsBase
-add https://github.com/mattwigway/MissingLinks.jl
+add GeoDataFrames Plots Graphs StatsBase MissingLinks
 ```
 
-Press backspace to exit package mode.
+You'll run this code in the REPL (in VSCode, choose View -> Command Palette and search for "Julia: Start REPL"). All of the other code you'll run should be in your notebook interface so you can save it. While it is optional, I do recommend [creating a Julia environment](https://pkgdocs.julialang.org/v1/environments/) to keep MissingLinks code separate from any other Julia projects you may work on.
+
+
+Press backspace to exit Pkg-mode.
 
 Once packages are installed, we are ready to load them.
 
@@ -27,6 +31,8 @@ If you're using Quarto and VSCode, place this code between triple-backticks to c
 using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase
 ```
 ````
+
+Likewise, all the other code in this quickstart will also go in a cell.
 
 ## Loading data
 
@@ -74,6 +80,19 @@ graph = graph_from_gdal(sidewalks)
 ```
 
 It is possible to specify more than one layer (for example, if you have sidewalks and crosswalks in separate layers) by separating the layers with commas. It is also possible to set a tolerance for when nodes are considered coincident. However, I recommend leaving this at the default small value and using [`add_short_edges!`](@ref) to close such gaps, to avoid issues that are described in the linked documentation. Similarly, [`remove_tiny_islands`](@ref) can be used to remove small "islands" in the graph that may be data errors. There are also tools for troubleshooting the graph, namely [`find_dead_ends`](@ref) to find locations that are dead ends, and [`find_disconnected_crossings`](@ref) to find places where sidewalks cross without intersecting. While both of these things will be present in a correct graph, they may also represent data errors.
+
+## Alternate graph construction using OpenStreetMap data
+
+It is also possible to construct a graph from [OpenStreetMap](https://openstreetmap.org) data. First, obtain an OpenStreetMap data file in [PBF format](https://wiki.openstreetmap.org/wiki/PBF_Format) (e.g. from [slice.openstreetmap.us](https://slice.openstreetmap.us/)). Then you can create the graph using the following syntax:
+
+```
+graph_from_osm(pbf, TraversalPermissionSettings(), projection)
+```
+
+`pbf` is a path to the PBF file. `TraversalPermissionSettings` define what ways should be included in the graph; see [`TraversalPermissionSettings`](@ref) for details on customization options.
+
+MissingLinks always works with Euclidean coordinates, so coordinates need to be projected. `projection` is a
+`GeoFormatTools` coordinate system to project the OSM data to. e.g. for North Carolina I use `GeoFormatTools.EPSG(32119)` (you'll need to install and import GeoFormatTools).
 
 ## Assigning weights to nodes
 
@@ -131,7 +150,7 @@ plot!(all_links_geo.geometry, color="#4B9CD3")
 Clearly, most of these links are essentially duplicates. The next step is to deduplicate them, by merging links where both ends are within 100m of one another (configurable by changing the number below).
 
 ```@example main
-links = deduplicate_links(all_links, matrix, 100)
+links = deduplicate_links(graph, all_links, matrix, 100)
 ```
 
 We can now plot these deduplicated links:
@@ -148,7 +167,7 @@ plot!(links_geo.geometry, color="#4B9CD3", lw=2)
 The final step is to score the identified links, using the [`score_links`](@ref) function. For this we need to specify what our origin and destination weights are, as well as our distance decay function. Here, I use a 1-mile (1609 meter) cutoff. This will return a vector with the score for each link. We have to specify both the distance decay function (first argument) and the point at which that function goes to zero (last argument); for a smooth decay function, I recommend instead specifying a piecewise function that goes to zero when the result is small enough that additional destinations do not materially affect accessibility.
 
 ```@example main
-link_scores = score_links(d -> d < 1609, links, matrix, origin_weights, destination_weights, 1609)
+link_scores = score_links(d -> d < 1609, graph, links, matrix, origin_weights, destination_weights, 1609)
 ```
 
 ## Saving links to GIS

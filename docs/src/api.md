@@ -14,6 +14,9 @@ add_short_edges!
 find_disconnected_crossings
 find_dead_ends
 MissingLinks.remove_elevation!
+TraversalPermissionSettings
+graph_from_osm
+MissingLinks.is_traversable
 ```
 ## Opportunity data
 
@@ -31,10 +34,12 @@ score_links
 links_to_gis
 ```
 
-## Service area analysis
+## Routing and mapping of impacts of individual links
 
 ```@docs
-service_area
+route_one_to_one
+distance_surface
+regional_access
 ```
 
 ## Internal
@@ -50,15 +55,15 @@ MissingLinks.compute_net_distance
 MissingLinks.add_unless_typemax
 MissingLinks.break_long_line
 MissingLinks.index_graph_nodes
-MissingLinks.find_point_on_edge
 MissingLinks.compute_link_score
 MissingLinks.split_link!
 MissingLinks.collapse_realized_graph!
 MissingLinks.get_xy
 MissingLinks.link_points!
-MissingLinks.TraversalPermissionSettings
 MissingLinks.write_tntp
 MissingLinks.realize_graph
 MissingLinks.index_candidate_links
+MissingLinks.index_graph_edges
+MissingLinks.closest_edge
 Base.reverse
 ```
