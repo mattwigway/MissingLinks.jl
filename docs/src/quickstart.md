@@ -1,6 +1,8 @@
 # Quickstart
 
-In this page, we will quickly work through the Julia code necessary to load a network dataset, assign weights to it, and identify and score missing links. I recommend running this code in an interactive, notebook style environment; I use [Quarto](https://quarto.org) and [Visual Studio Code](https://code.visualstudio.com/). More details about all of the functions from the MissingLinks package that are used herein are available in the [API Documentation](@ref). To run the code, you'll need to [install a recent version of Julia](https://julialang.org/install/).
+In this page, we will quickly work through the Julia code necessary to load a network dataset, assign weights to it, and identify and score missing links. To run the code, you'll need to [install a recent version of Julia](https://julialang.org/install/).
+
+I recommend running this code in an interactive, notebook style environment; I use [Quarto](https://quarto.org) and [Visual Studio Code](https://code.visualstudio.com/) with the [Julia](https://marketplace.visualstudio.com/items?itemName=julialang.language-julia) and [Quarto](https://marketplace.visualstudio.com/items?itemName=quarto.quarto) extensions. More details about all of the functions from the MissingLinks package are available in the [API Documentation](@ref).
 
 ## Load packages
 
@@ -210,6 +212,10 @@ plot!(links_geo.geometry[argmax(link_scores)], color="#4B9CD3", lw=4)
 
 The link is a crossing in the southeast part of the graph.
 
+### One-to-one routes
+
+The lowest level of aggregation is the one-to-one route. This allows us to visualize the impact of the link on a particular trip from one location to another.
+
 Next, we'll create a route from one point to another (specified as latitude/longitude):
 
 ```@example main
@@ -221,16 +227,16 @@ index = MissingLinks.index_graph_edges(graph)
 # now, we can do the route without the link
 route_without_link = route_one_to_one(
     graph,
-    (35.3408, -80.8555), # origin
-    (35.3393, -80.8620), # destination
+    (35.3393, -80.8620), # origin
+    (35.3408, -80.8555), # destination
     crs=GeoFormatTypes.EPSG(32119), # the projection of your graph
     index=index # the prebuilt index
 )
 ```
 
-### Including the link
+#### Including the link
 
-`route_one_to_one` always routes only on the edges in the graph. To use a potential link, we need to create a new graph that has the link in it. We can use `realize_graph` to create a new graph with the link added (we can also specify multiple links, by separating them with commas inside the `[]`:
+`route_one_to_one` always routes only on the edges in the graph. To use a potential link, we need to create a new graph that has the link in it. We can use `realize_graph` to create a new graph with the link added (we can also specify multiple links, by separating them with commas inside the `[]`):
 
 ```@example main
 graph_with_link = realize_graph(graph, [best_link])
@@ -243,8 +249,8 @@ index_with_link = MissingLinks.index_graph_edges(graph_with_link)
 
 route_with_link = route_one_to_one(
     graph_with_link,
-    (35.3408, -80.8555), # origin
-    (35.3393, -80.8620), # destination
+    (35.3393, -80.8620), # origin
+    (35.3408, -80.8555), # destination
     crs=GeoFormatTypes.EPSG(32119), # the projection of your graph
     index=index_with_link # the prebuilt index
 )
@@ -265,4 +271,56 @@ routes = DataFrame([route_without_link, route_with_link])
 metadata!(routes, "geometrycolumns", (:geom,))
 # Change the CRS code to the CRS of your graph so the routes display properly in GIS
 GeoDataFrames.write("routes.gpkg", routes, crs=GeoFormatTypes.EPSG(32119))
+```
+
+<!--
+TODO fix isochrone to smartly use links.
+
+### Isochrones
+
+The next level of aggregation is the isochrone. It shows all the places you can get to from a single point, with and without the link. We can create isochrones with the `distance_surface` function, which creates a raster grid around the origin showing the distance to each location.
+
+First, we'll create an isochrone from the start of the trip above, without the link. By default it will include distances up to 5000. As before, adjust the CRS to the appropriate CRS for your region.
+
+```
+surface = distance_surface(graph, matrix, (35.3393, -80.8620), index=index, crs=GeoFormatTypes.EPSG(32119))
+```
+
+Next, we'll create an isochrone based on the graph including the link (which we built above):
+
+```
+surface = distance_surface(graph_with_link, matrix, (35.3393, -80.8620), index=index_with_link, crs=GeoFormatTypes.EPSG(32119))
+```
+-->
+
+### Regional access
+
+The regional access metric shows for every point around a link, how much the access from that point increases due to the link. Let's see an example:
+
+```@example main
+access = regional_access(
+    d -> d < 1609, # decay function, we consider locations accessible that are within 1 mile (1609 meters)
+    graph,
+    matrix,
+    best_link,
+    destination_weights, # using origin_weights here would map how many people can get to each location
+    1609 # point at which our decay function is (essentially) zero - in this case, 1609 meters
+)
+```
+
+```@example main
+# xlim and ylim just set the map extents, adjust or remove to map different areas
+plot(access, xlim=(439200, 441500), ylim=(177500, 179500))
+# add sidewalks on top of the map
+plot!(sidewalks.geom, color="white")
+# and the link on top of that
+plot!(links_geo.geometry[argmax(link_scores)], color="#e84646ff", lw=4)
+```
+
+The largest increases in access happen on the west side of the link, presumably because most destinations are on the east side.
+
+We can also save this to GIS (GeoTIFF format):
+
+```@example main
+write("access.tif", access)
 ```
