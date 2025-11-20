@@ -14,7 +14,7 @@ A --✂--- B
 D---✂--- C
     ✂
 
-A is relatively directly connected to D, but suppose where the scissor are is the edge of a partition that extends
+A is relatively directly connected to D, but suppose where the scissors are is the edge of a partition that extends
 to the left. In the partition that extends to the left, AB and CD will be present, but BC will not as it is completely
 outside the partition. This will result in a candidate link AB->CD being identified and may score highly as it closes
 a major gap in the graph. This subgraph will be completely within the partition to the right, and we will get the correct
