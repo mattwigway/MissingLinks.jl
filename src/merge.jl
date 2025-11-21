@@ -8,14 +8,14 @@ Base.contains(p::GraphPartition, pt::LibGEOS.Point) = Base.contains(p, LibGEOS.g
 Is link l in the non-buffer area of graph partition p? Link l is assumed to be identified from this graph partition.
 """
 function Base.contains(p::GraphPartition, l::CandidateLink)
-    frgeom = gdal_to_geos(p.G[label_for(p.G, l.fr_edge_src), label_for(p.G, l.fr_edge_tgt)].geom)
+    frgeom = gdal_to_geos(p.G[l.fr_edge_src, l.fr_edge_tgt].geom)
     frpt = LibGEOS.interpolate(frgeom, l.fr_dist_from_start)
     if Base.contains(p, frpt)
         # it only has to contain one point, short circuit if it does
         return true
     end
 
-    togeom = gdal_to_geos(p.G[label_for(p.G, l.to_edge_src), label_for(p.G, l.to_edge_tgt)].geom)
+    togeom = gdal_to_geos(p.G[l.to_edge_src, l.to_edge_tgt].geom)
     topt = LibGEOS.interpolate(togeom, l.to_dist_from_start)
     return Base.contains(p, topt)
 end
@@ -27,7 +27,7 @@ Merge links from partitioned graphs Gs back into a single list referencing graph
 a tuple of (links, scores).
 
 """
-function merge_links(G::T, Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{CandidateLink}}, scores::Matrix{Vector{S}}) where {S <: Real, T}
+function merge_links(Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{CandidateLink}}, scores::Matrix{Vector{S}}) where {S <: Real, T}
     size(Gs) == size(links) || error("links must have same size as Gs")
     size(Gs) == size(scores) || error("links must have same size as Gs")
 
@@ -42,21 +42,23 @@ function merge_links(G::T, Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{C
         for (link, score) in zip(lsub, ssub)
             # figure out if this link is actually in this partition as opposed to in the buffer around it
             if contains(Gsub, link)
-                fr = order_vertices(label_for(Gsub.G, link.fr_edge_src), label_for(Gsub.G, link.fr_edge_tgt))
-                to = order_vertices(label_for(Gsub.G, link.to_edge_src), label_for(Gsub.G, link.to_edge_tgt))
+                fr = order_vertices(link.fr_edge_src, link.fr_edge_tgt)
+                to = order_vertices(link.to_edge_src, link.to_edge_tgt)
 
                 # translate link to original graph vertex codes
                 link_tr = CandidateLink(
-                    code_for(G, fr[1]),
-                    code_for(G, fr[2]),
+                    fr[1],
+                    fr[2],
                     link.fr_dist_from_start,
                     link.fr_dist_to_end,
-                    code_for(G, to[1]),
-                    code_for(G, to[2]),
+                    to[1],
+                    to[2],
                     link.to_dist_from_start,
                     link.to_dist_to_end,
                     link.geographic_length_m,
-                    link.network_length_m
+                    # network distances are not reliable in partitioned graph, as the old network distance may have been
+                    # much larger than a partition
+                    zero(typeof(link.network_length_m))
                 )
 
                 # treat links in both directions as substitutes, and don't retain both,

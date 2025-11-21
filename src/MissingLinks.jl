@@ -55,6 +55,7 @@ include("regional_access.jl")
 include("isochrone.jl")
 include("spidx.jl") # workaround for https://github.com/JuliaGeo/LibSpatialIndex.jl/pull/36
 include("merge.jl")
+include("testdata.jl")
 
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)

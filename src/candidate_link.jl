@@ -41,17 +41,17 @@ Base.hash(l::CandidateLink, h::UInt64) = hash(
 )
 
 Base.isequal(a::CandidateLink, b::CandidateLink) =
-    a.fr_edge_src == fr_edge_src &&
-    a.fr_edge_tgt == fr_edge_tgt &&
-    a.fr_dist_from_start == fr_dist_from_start &&
-    a.fr_dist_to_end == fr_dist_to_end &&
-    a.to_edge_src == to_edge_src &&
-    a.to_edge_tgt == to_edge_tgt &&
-    a.to_dist_from_start == to_dist_from_start &&
-    a.to_dist_to_end == to_dist_to_end &&
-    a.geographic_length_m == geographic_length_m &&
+    a.fr_edge_src == b.fr_edge_src &&
+    a.fr_edge_tgt == b.fr_edge_tgt &&
+    a.fr_dist_from_start == b.fr_dist_from_start &&
+    a.fr_dist_to_end == b.fr_dist_to_end &&
+    a.to_edge_src == b.to_edge_src &&
+    a.to_edge_tgt == b.to_edge_tgt &&
+    a.to_dist_from_start == b.to_dist_from_start &&
+    a.to_dist_to_end == b.to_dist_to_end &&
+    a.geographic_length_m == b.geographic_length_m &&
     # this is why we can't use @struct_hash_equals - need to handle missings differently
-    ((ismissing(a.network_length_m) && ismissing(b.network_length_m)) || a.network_length_m == network_length_m)
+    ((ismissing(a.network_length_m) && ismissing(b.network_length_m)) || a.network_length_m == b.network_length_m)
 
 """
 Create a reversed version of a candidate link, used in evaluating accessibility to calculate
