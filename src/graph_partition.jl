@@ -134,8 +134,8 @@ end
 """
     identify_and_score(decay_function, Matrix{GraphPartition}, )
 """
-function identify_and_score(decay_function, G, Gs; max_link_distance=100, min_net_distance=1000,
-        sphere_of_influence_radius=100, cutoff_distance=missing, origin_weights=missing, dest_weights=missing, mmap=false)
+function identify_and_score(decay_function, G, Gs; max_link_distance=100, min_net_distance=1000, sphere_of_influence_radius=100,
+        cutoff_distance=missing, origin_weights=missing, dest_weights=missing, mmap=false, deduplicate=true)
 
     ismissing(cutoff_distance) && error("Must specify cutoff_distance")
     ismissing(origin_weights) && error("Must specify origin_weights")
@@ -152,7 +152,11 @@ function identify_and_score(decay_function, G, Gs; max_link_distance=100, min_ne
         create_distance_matrix(UInt16, nv(Gsub.G), nv(Gsub.G), mmap) do dmat
             fill_distance_matrix!(Gsub, dmat; maxdist=cutoff_distance)
             all_links = identify_potential_missing_links(Gsub, dmat, max_link_distance, min_net_distance)
-            candidate_links[r, c] = deduplicate_links(Gsub, all_links, dmat, sphere_of_influence_radius)
+            candidate_links[r, c] = if deduplicate
+                deduplicate_links(Gsub, all_links, dmat, sphere_of_influence_radius)
+            else
+                all_links
+            end
             osub = partition_weights(G, Gsub, origin_weights)
             dsub = partition_weights(G, Gsub, dest_weights)
             scores[r, c] = score_links(decay_function, Gsub, candidate_links[r, c], dmat, osub, dsub, cutoff_distance)

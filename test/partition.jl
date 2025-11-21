@@ -30,8 +30,9 @@
     # identify and score links with monolithic graph
     dmat = Matrix{UInt16}(undef, nv(G), nv(G))
     fill_distance_matrix!(G, dmat)
-    all_links = identify_potential_missing_links(G, dmat, 100, 1000)
-    links = deduplicate_links(G, all_links, dmat, 100)
+    links = identify_potential_missing_links(G, dmat, 100, 1000)
+    # We are intentionally not deduplicating. Since the deduplication is a heuristic that depends on other links
+    # in the graph, partitioning will mean that some links are not exactly perfectly deduplicated identically.
     scores = score_links(x -> x < 1000, G, links, dmat, fill(1, nv(G)), weights, 1000)
 
     # network distances are not reliable in partitioned graph, as the old network distance may have been
@@ -53,17 +54,23 @@
         Gs,
         cutoff_distance = 1000,
         origin_weights = fill(1, nv(G)),
-        dest_weights = weights
+        dest_weights = weights,
+        deduplicate = false
     )
+
+    # since we've disabled deduplication, we'll find all links in both directions above
+    # but merge_links will only return links in one direction
+    # so make the reverse of every link
+
+    plinks = [plinks..., reverse.(plinks)...]
+    pscores = [pscores..., pscores...]
 
     sorter = sortperm(plinks)
     plinks = plinks[sorter]
     pscores = pscores[sorter]
 
-    # TODO this fails, because the results are not in fact exactly the same
-    # because the deduplication happens on each partition individually... hmm...
-    @test length(links) == 546
-    @test length(plinks) == 546
+    @test length(links) == 7430
+    @test length(plinks) == 7430
     @test all(links .== plinks)
     @test all(scores .≈ pscores)
 end
