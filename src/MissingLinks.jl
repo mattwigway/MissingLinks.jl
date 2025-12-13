@@ -18,7 +18,7 @@ __OverflowContextDefaultSet = true
 import MetaGraphsNext: MetaGraph, labels, edge_labels, code_for, label_for, neighbor_labels
 import Graphs: Graph, dijkstra_shortest_paths, nv, ne, is_directed, connected_components, strongly_connected_components,
     outneighbors, has_edge, has_vertex, vertices, edges, degree, rem_edge!, rem_vertex!
-import LibSpatialIndex: RTree
+import LibSpatialIndex: RTree, insert!, intersects, knn
 import DataFrames: DataFrame, nrow, metadata, metadata!
 import LinearAlgebra: norm2
 import Logging: @info, @warn, @error
@@ -52,8 +52,6 @@ include("link_point.jl")
 include("routing.jl")
 include("regional_access.jl")
 include("isochrone.jl")
-include("spidx.jl") # workaround for https://github.com/JuliaGeo/LibSpatialIndex.jl/pull/36
-
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
 # rather than MissingLinks.VertexID(42, :node)
