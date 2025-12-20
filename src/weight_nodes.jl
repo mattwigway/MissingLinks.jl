@@ -56,3 +56,21 @@ function create_graph_weights(G, gdf, weightcols, distance)
 
     return weights
 end
+
+"""
+    partition_weights(G, Gsub, weights)
+
+Given weights `weights` that go with graph `G`, extract a weight array that goes with GraphPartition `Gsub`.
+"""
+function partition_weights(G::T, Gsub::GraphPartition{T}, weights::AbstractVector{W}) where {T, W}
+    output = zeros(W, nv(Gsub.G))
+
+    for (idx, wt) ∈ pairs(weights)
+        label = label_for(G, idx)
+        if haskey(Gsub.G, label)
+            output[code_for(Gsub.G, label)] = wt
+        end
+    end
+
+    return output
+end

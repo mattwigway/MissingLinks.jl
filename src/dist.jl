@@ -18,7 +18,7 @@ that are unreachable altogether) the matrix will contain `typemax(T)`.
 
 Will use multiple threads if Julia is started with multiple threads.
 """
-function fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
+function fill_distance_matrix!(G::MetaGraph, mtx::AbstractMatrix{T}; maxdist=5000, origins=1:nv(G)) where T
     size(mtx) == (nv(G), nv(G)) || error("Matrix must be $(nv(G))x$(nv(G))")
 
     @info "Routing with $(Threads.nthreads()) threads"
@@ -33,6 +33,8 @@ function fill_distance_matrix!(G, mtx::AbstractMatrix{T}; maxdist=5000, origins=
         mtx[:, origin] = round.(T, min.(paths.dists, typemax(T)))
     end
 end
+
+fill_distance_matrix!(G::GraphPartition, mtx; kwargs...) = fill_distance_matrix!(G.G, mtx; kwargs...)
 
 """
 Compute the network distance between the two points on links, by computing

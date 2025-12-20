@@ -133,3 +133,6 @@ function deduplicate_links(G, links::AbstractVector{<:CandidateLink{<:Any}}, dma
         return best
     end
 end
+
+deduplicate_links(G::GraphPartition, links::AbstractVector{<:CandidateLink{<:Any}}, dmat, sphere_of_influence_radius) = 
+    deduplicate_links(G.G, links, dmat, sphere_of_influence_radius)

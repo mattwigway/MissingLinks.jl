@@ -33,6 +33,7 @@ import GeoFormatTypes as GFT
 import Rasters
 import ProgressMeter: @showprogress
 
+include("graph_partition.jl")
 include("graph.jl")
 include("candidate_link.jl")
 include("dist.jl")
@@ -52,6 +53,9 @@ include("link_point.jl")
 include("routing.jl")
 include("regional_access.jl")
 include("isochrone.jl")
+include("merge.jl")
+include("testdata.jl")
+
 
 # we export vertexID not because we really expect people to use it, but so that repr(vertexID) print VertexID(42, :node)
 # rather than MissingLinks.VertexID(42, :node)
@@ -61,5 +65,6 @@ export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, d
     nodes_to_gis, realize_graph, collapse_realized_graph!, VertexID, regional_access, route_one_to_one, distance_surface,
     graph_from_osm, TraversalPermissionSettings
 
-@compat public remove_elevation!, get_example_data, write_tntp, is_traversable, index_graph_edges
+@compat public remove_elevation!, get_example_data, write_tntp, is_traversable,
+    index_graph_edges, partition, partition_weights, merge_links
 end

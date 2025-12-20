@@ -4,3 +4,10 @@ git-tree-sha1 = "5ea25d024959a1d02161b862cc82162a43d77c60"
     [[example_data.download]]
     sha256 = "29fcfd3896e452239bce7c6366a0baac3ce2c4eb092c7d0116f3a690a18496c8"
     url = "https://gist.github.com/mattwigway/b763682ef0b6b1904f481a69757fe8aa/raw/5ea25d024959a1d02161b862cc82162a43d77c60.tar.gz"
+
+[huntersville_osm]
+git-tree-sha1 = "8232458b3daa4cfc1b76273737c16644268cedce"
+
+    [[huntersville_osm.download]]
+    sha256 = "066a43fd0e0eeebd2bfb1b6c1fab2a59c5cf82c9442c6dd0fceb8f5082cefcd9"
+    url = "http://osf.io/64vjk/download?version=1"

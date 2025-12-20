@@ -90,7 +90,7 @@ within a threshold distance). We do this in several steps:
  4. Reverse the start and end of the link, and repeat
  5. Sum the results
 """
-function score_links(decay_function, G, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
+function score_links(decay_function, G::MetaGraph, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
     # First, score all origins using the base network
     @info "Processing links"
     link_scores = ThreadsX.mapi(enumerate(links)) do (i, link)
@@ -104,3 +104,7 @@ function score_links(decay_function, G, links, dmat, origin_weights, dest_weight
 
     return link_scores
 end
+
+score_links(decay_function, G::GraphPartition, links, dmat, origin_weights, dest_weights, decay_cutoff_m) =
+    score_links(decay_function, G.G, links, dmat, origin_weights, dest_weights, decay_cutoff_m)
+
