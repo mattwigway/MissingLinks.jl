@@ -80,7 +80,7 @@ end
 Based on `settings`, should `way` be included in the graph? Override if you are creating
 custom traversal permissions settings objects.
 """
-function is_traversable(settings, way::Way)
+function is_traversable(settings::TraversalPermissionSettings, way)
     traversable = false
     override_no = false
     override_yes = false
