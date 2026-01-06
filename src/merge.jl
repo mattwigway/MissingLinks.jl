@@ -27,7 +27,7 @@ Merge links from partitioned graphs Gs back into a single list referencing graph
 a tuple of (links, scores).
 
 """
-function merge_links(Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{CandidateLink}}, scores::Matrix{Vector{S}}) where {S <: Real, T}
+function merge_links(G, Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{CandidateLink}}, scores::Matrix{Vector{S}}) where {S <: Real, T}
     size(Gs) == size(links) || error("links must have same size as Gs")
     size(Gs) == size(scores) || error("links must have same size as Gs")
 
@@ -42,23 +42,28 @@ function merge_links(Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{Candida
         for (link, score) in zip(lsub, ssub)
             # figure out if this link is actually in this partition as opposed to in the buffer around it
             if contains(Gsub, link)
-                fr = order_vertices(link.fr_edge_src, link.fr_edge_tgt)
-                to = order_vertices(link.to_edge_src, link.to_edge_tgt)
+                fr = (link.fr_edge_src, link.fr_edge_tgt)
+                to = (link.to_edge_src, link.to_edge_tgt)
+
+                # there was previously code here that reordered vertices, but I don't think they should
+                # ever be out of order. Preserve the check in case there is some edge case I'm not thinking of.
+                @assert fr == order_vertices(fr...)
+                @assert to == order_vertices(to...)
 
                 # translate link to original graph vertex codes
                 link_tr = CandidateLink(
-                    fr[1],
-                    fr[2],
+                    link.fr_edge_src,
+                    link.fr_edge_tgt,
                     link.fr_dist_from_start,
                     link.fr_dist_to_end,
-                    to[1],
-                    to[2],
+                    link.to_edge_src,
+                    link.to_edge_tgt,
                     link.to_dist_from_start,
                     link.to_dist_to_end,
                     link.geographic_length_m,
                     # network distances are not reliable in partitioned graph, as the old network distance may have been
                     # much larger than a partition
-                    zero(typeof(link.network_length_m))
+                    zero(typeof(link.geographic_length_m))
                 )
 
                 # treat links in both directions as substitutes, and don't retain both,
@@ -75,24 +80,32 @@ function merge_links(Gs::Matrix{GraphPartition{T}}, links::Matrix{Vector{Candida
                     o = out_links[(fr, to)].link
 
                     # they should be identical
-                    @assert o.fr_dist_from_start == link_tr.fr_dist_from_start
-                    @assert o.fr_dist_to_end == link_tr.fr_dist_to_end
-                    @assert o.to_dist_from_start == link_tr.to_dist_from_start
-                    @assert o.to_dist_to_end == link_tr.to_dist_to_end
-                    @assert o.geographic_length_m == link_tr.geographic_length_m
-                    @assert o.network_length_m == link_tr.network_length_m
-                    @assert out_links[(fr, to)].score ≈ score
+                    if !(
+                         o.fr_dist_from_start == link_tr.fr_dist_from_start &&
+                         o.fr_dist_to_end == link_tr.fr_dist_to_end &&
+                         o.to_dist_from_start == link_tr.to_dist_from_start &&
+                         o.to_dist_to_end == link_tr.to_dist_to_end &&
+                         o.geographic_length_m == link_tr.geographic_length_m &&
+                         o.network_length_m == link_tr.network_length_m &&
+                         out_links[(fr, to)].score ≈ score
+                    )
+                        @error "Expected links to be identical but they are not, this can happen when links cross more than once:" link_tr o
+                    end
                 elseif haskey(out_links, (to, fr))
                     o = out_links[(to, fr)].link
 
                     # they should be reverses of one another
-                    @assert o.fr_dist_from_start == link_tr.to_dist_from_start
-                    @assert o.fr_dist_to_end == link_tr.to_dist_to_end
-                    @assert o.to_dist_from_start == link_tr.fr_dist_from_start
-                    @assert o.to_dist_to_end == link_tr.fr_dist_to_end
-                    @assert o.geographic_length_m == link_tr.geographic_length_m
-                    @assert o.network_length_m == link_tr.network_length_m
-                    @assert out_links[(to, fr)].score ≈ score
+                    if !(
+                        o.fr_dist_from_start == link_tr.to_dist_from_start &&
+                        o.fr_dist_to_end == link_tr.to_dist_to_end &&
+                        o.to_dist_from_start == link_tr.fr_dist_from_start &&
+                        o.to_dist_to_end == link_tr.fr_dist_to_end &&
+                        o.geographic_length_m == link_tr.geographic_length_m &&
+                        o.network_length_m == link_tr.network_length_m &&
+                        out_links[(to, fr)].score ≈ score
+                    )
+                        @error "Expected links to be reverses of one another but they are not, this can happen if edges cross more than once:" link_tr o
+                    end
                 else
                     out_links[(fr, to)] = (link=link_tr, score=score)
                 end
