@@ -23,7 +23,8 @@ function fill_distance_matrix!(G::MetaGraph, mtx::AbstractMatrix{T}; maxdist=500
 
     @info "Routing with $(Threads.nthreads()) threads"
 
-    ThreadsX.mapi(origins) do origin
+    #ThreadsX.mapi(origins) do origin
+    map(origins) do origin
         if origin % 1000 == 0
             @info "Processed $origin / $(nv(G)) trips"
         end
