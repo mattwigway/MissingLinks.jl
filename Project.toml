@@ -54,7 +54,11 @@ LinearAlgebra = "1.10"
 Logging = "1.9"
 MetaGraphsNext = "0.7.1, 0.8"
 Mmap = "1.10"
+<<<<<<< HEAD
 OpenStreetMapPBF = "0.2.0, 0.3"
+=======
+OpenStreetMapPBF = "0.2, 0.3"
+>>>>>>> 3b91132 (update osmpbf compat)
 OverflowContexts = "0.2.7"
 Pkg = "1.10"
 ProgressMeter = "1.11.0"
