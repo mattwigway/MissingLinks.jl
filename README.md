@@ -16,12 +16,4 @@ There is a quickstart for getting started with the package [available in the doc
 
 ## Reproducing the Charlotte results
 
-The Charlotte results are produced by `run_analysis.qmd` and `rank_comparisons.qmd` in the notebook folder; the other `qmd` files in that folder prepare the data. Unfortunately, the Data Axle data used in the paper is not publicly available.
-
-Open the `MissingLinks.jl` folder in VSCode, and press Cmd/Ctrl-shift-P to get the "command palette" and search for and select "Julia: Start REPL". A Julia REPL (console) should appear. Type `]` to enter the package manager. The prompt should change to say `(MissingLinks.jl) pkg>`. (If it says something like `(@1.9) pkg>` type `activate .` to activate the "environment" for the MissingLinks.jl folder, which contains the dependencies needed to run the model.) Type `instantiate` to download all the necessary packages, and then press backspace to exit the package manager. Type `Threads.nthreads()` and press enter; confirm you get a number greater than 1 to indicate that multithreaded processing is enabled.
-
-You now have Julia and all dependencies installed, and should not need to repeat the above steps unless you get a new computer, upgrade Julia, or change the dependencies of the project.
-
-The datasets used in the Charlotte project are too large to store in Git, so they are stored in the OneDrive folder shared with all project collaborators. This will potentially be in a different location on each person's computer. To tell Julia where to find the data, copy the `config.toml.template` file to `config.toml`, and enter the path to the `Missing links project/data` folder.
-
-To run the analysis, open the `notebooks/run_analysis.qmd file`. You can run cells by clicking "Run cell" or pressing "Cmd/Ctrl-shift-enter". The model requires about 26 GB of free disk space to run (for the mmapped distance matrix).
+As of 2025-01-09, code to run the Charlotte results used in the original paper have been moved to [mattwigway/missing-links-clt](https://github.com/mattwigway/missing-links-clt).
