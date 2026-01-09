@@ -7,3 +7,6 @@
 example_data
 Manifest.toml
 .DS_Store
+.vscode
+*.tntp
+notebooks/util/figures
