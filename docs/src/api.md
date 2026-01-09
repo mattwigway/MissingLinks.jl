@@ -48,6 +48,7 @@ regional_access
 Large graphs are intractable; these tools can be used to split up a graph and analyze it.
 
 ```@docs
+MissingLinks.GraphPartition
 MissingLinks.partition
 MissingLinks.identify_and_score
 MissingLinks.partition_weights
