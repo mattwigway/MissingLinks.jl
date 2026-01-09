@@ -130,6 +130,16 @@ sum(dest_weights_snapped) / sum(dest_parcels.dest_weight)
 ```
 
 ```{julia}
+# sanity checks, should be everything except parks and greenways
+dest_points = GeoDataFrames.read(joinpath(DATAAXLE_PATH, "all_point_locations.gpkg"))
+
+@chain dest_points begin
+    groupby([:snap_to_parcels, :type, :weight])
+    @combine(:n=length(:weight), :total=sum(:weight))
+end
+```
+
+```{julia}
 dest_points_unsnapped = @chain begin
     GeoDataFrames.read(joinpath(DATAAXLE_PATH, "all_point_locations.gpkg"))
     @subset! .!:snap_to_parcels
@@ -154,6 +164,8 @@ parks.geom = reproject(parks.geom, GFT.EPSG(2264), GFT.EPSG(32119))
 metadata!(parks, "geometrycolumns", (:geom,))
 dest_weights_parks = create_graph_weights(G, parks, [:weight], 20)[:, 1]
 
+@assert sum(parks.weight) ≈ 497 # expected weight calculated on R side
+
 sum(dest_weights_parks) / sum(parks.weight)
 ```
 
@@ -164,7 +176,7 @@ Greenways have points placed along them. We use a much lower snapping tolerance 
 greenway_points = GeoDataFrames.read(joinpath(DATA_PATH, "data", "destinations", "greenway_points.gpkg"))
 dest_weights_greenway = create_graph_weights(G, greenway_points, [:weight], 1) .* 2 # greenways are med priority - 2 points per km
 
-# should be very close to 2
+# should be very close to 2 - confirmed 393 points that are affected by island removal, ~2%.
 sum(dest_weights_greenway) / sum(greenway_points.weight)
 ```
 
@@ -300,4 +312,7 @@ result = (
 )
 
 serialize(joinpath(DATA_PATH, "data", "link_data.jlobj"), result)
+```
+
+```{julia}
 ```

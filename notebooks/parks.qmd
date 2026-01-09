@@ -41,3 +41,8 @@ unique(nbhd$PARK_TYPE)
 ```{r}
 write_sf(nbhd, file.path(config$data_path, "data", "destinations", "neighborhood_parks.gpkg"))
 ```
+
+```{r}
+# expected weight
+nrow(regional) * 3 + nrow(nbhd) * 2
+```

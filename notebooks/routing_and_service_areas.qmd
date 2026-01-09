@@ -49,7 +49,7 @@ post.type .= "With link"
 sface = MissingLinks.distance_surface(G, matrix, (35.32387548000563, -80.7360663361862); index=index, crs=GFT.EPSG(32119))
 Rasters.setcrs(sface, GFT.EPSG(32119))
 Rasters.setmappedcrs(sface, GFT.EPSG(32119))
-write(joinpath(DATA_PATH, "linkmaps", "isochrone.tif"), sface, force=true)
+write(joinpath(DATA_PATH, "linkmaps", "isochrone.tif"), sface, force=true, options=Dict("COMPRESS" => "LZW"))
 ```
 
 ### And with both
@@ -70,7 +70,7 @@ post2.type .= "With two links"
 access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[1557], dest_weights, 1609 * 2; index=index)
 Rasters.setcrs(access, GFT.EPSG(32119))
 Rasters.setmappedcrs(access, GFT.EPSG(32119))
-write(joinpath(DATA_PATH, "mallard_ck.tif"), access, force=true)
+write(joinpath(DATA_PATH, "mallard_ck.tif"), access, force=true, options=Dict("COMPRESS" => "LZW"))
 ```
 
 ## Muskogee
@@ -102,7 +102,7 @@ muskl.type .= "With link"
 access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[86], dest_weights, 1609 * 2; index=index)
 Rasters.setcrs(access, GFT.EPSG(32119))
 Rasters.setmappedcrs(access, GFT.EPSG(32119))
-write(joinpath(DATA_PATH, "muskogee.tif"), access, force=true)
+write(joinpath(DATA_PATH, "muskogee.tif"), access, force=true, options=Dict("COMPRESS" => "LZW"))
 ```
 
 ## Louise and Otts
@@ -135,7 +135,7 @@ louisel.type .= "With link"
 access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[1740], dest_weights, 1609 * 2; index=index)
 Rasters.setcrs(access, GFT.EPSG(32119))
 Rasters.setmappedcrs(access, GFT.EPSG(32119))
-write(joinpath(DATA_PATH, "linkmaps", "louise.tif"), access, force=true)
+write(joinpath(DATA_PATH, "linkmaps", "louise.tif"), access, force=true, options=Dict("COMPRESS" => "LZW"))
 ```
 ## Commonwealth
 
@@ -165,7 +165,7 @@ comml.type .= "With link"
 access = MissingLinks.regional_access(x -> x < 1609 * 2, G, matrix, candidate_links[351], dest_weights, 1609 * 2; index=index)
 Rasters.setcrs(access, GFT.EPSG(32119))
 Rasters.setmappedcrs(access, GFT.EPSG(32119))
-write(joinpath(DATA_PATH, "linkmaps", "commonwealth.tif"), access, force=true)
+write(joinpath(DATA_PATH, "linkmaps", "commonwealth.tif"), access, force=true,options=Dict("COMPRESS" => "LZW"))
 ```
 
 

@@ -263,10 +263,13 @@ parcel_weights = snap_pts %>%
     filter(nearest_dist < units::as_units(100, "m")) %>%
     st_drop_geometry() %>%
     group_by(nearest) %>%
-    summarize(weight=sum(weight))
+    summarize(weight=sum(weight), type=paste(sort(unique(type)), collapse=", "))
 
 parcels$weight = 0
 parcels$weight[parcel_weights$nearest] = parcel_weights$weight
+
+parcels$type = NA_character_
+parcels$type[parcel_weights$nearest] = parcel_weights$type
 
 weighted_parcels = filter(parcels, weight > 0) %>%
     rename(dest_weight="weight")
@@ -276,6 +279,10 @@ write_sf(weighted_parcels, file.path(config$data_path, "data", "destinations", "
 
 ## Sanity check
 ```{r}
+# Our weight for those that did snap plus those that are not snapped plus those that failed to snap should be our input weight
 out_weight = sum(weighted_parcels$dest_weight) + sum(point_locations[!point_locations$snap_to_parcels,]$weight) + sum(snap_pts[snap_pts$nearest_dist >= units::as_units(100, "m"),]$weight)
 stopifnot(all.equal(out_weight, in_weight))
+```
+
+```{r}
 ```
