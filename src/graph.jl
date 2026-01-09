@@ -111,7 +111,7 @@ function add_short_edges!(G, max_edge_length)
 
         # this was added during testing to track down JuliaGeo/LibSpatialIndex#37, but it's a low cost
         # check and who knows it might catch another correctness/version incompatibility issue at some point.
-        isempty(all_candidates) && error("No candidates near $vlabel @ $loc, this is an error as we should at least find itself!")
+        isempty(all_candidates) && error("No candidates near $vlabel @ $loc, this is an error as we should at least find itself! This may be due to an out-of-date LibSpatialIndex version, use v0.2.2 or higher (see https://github.com/JuliaGeo/LibSpatialIndex/issues/37)")
 
         # find all candidates ≤ max_edge_length away
         candidates = filter(
