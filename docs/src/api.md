@@ -17,6 +17,7 @@ MissingLinks.remove_elevation!
 TraversalPermissionSettings
 graph_from_osm
 MissingLinks.is_traversable
+MissingLinks.extent
 ```
 ## Opportunity data
 
@@ -40,6 +41,18 @@ links_to_gis
 route_one_to_one
 distance_surface
 regional_access
+```
+
+## Graph partitioning
+
+Large graphs are intractable; these tools can be used to split up a graph and analyze it.
+
+```@docs
+MissingLinks.partition
+MissingLinks.identify_and_score
+MissingLinks.partition_weights
+MissingLinks.merge_links
+Base.contains
 ```
 
 ## Internal

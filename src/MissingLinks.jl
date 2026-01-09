@@ -66,5 +66,5 @@ export graph_from_gdal, identify_potential_missing_links, remove_tiny_islands, d
     graph_from_osm, TraversalPermissionSettings
 
 @compat public remove_elevation!, get_example_data, write_tntp, is_traversable,
-    index_graph_edges, partition, partition_weights, merge_links
+    index_graph_edges, partition, partition_weights, merge_links, identify_and_score, extent
 end

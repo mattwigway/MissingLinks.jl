@@ -132,7 +132,11 @@ function extent(G)
 end
 
 """
-    identify_and_score(decay_function, Matrix{GraphPartition}, )
+    identify_and_score(decay_function, Matrix{GraphPartition}, G, Gs; max_link_distance=100, min_net_distance=1000, sphere_of_influence_radius=100,
+        cutoff_distance=missing, origin_weights=missing, dest_weights=missing, mmap=false, deduplicate=true)
+
+Run the full process of routing, identifying, and scoring links on a partitioned graph. Optionally deduplicate, though keep
+in mind that which links are retained in deduplication depends slightly on the partitioning structure.
 """
 function identify_and_score(decay_function, G, Gs; max_link_distance=100, min_net_distance=1000, sphere_of_influence_radius=100,
         cutoff_distance=missing, origin_weights=missing, dest_weights=missing, mmap=false, deduplicate=true)
