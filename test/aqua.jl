@@ -1,8 +1,8 @@
 @testitem "Aqua" begin
     import Aqua, MissingLinks
     Aqua.test_all(MissingLinks;
-        # used in notebook code or scripts
-        stale_deps=(ignore=[:ArgParse, :Gadfly, :Humanize, :StatsBase, :Cairo, :Fontconfig, :DataFramesMeta],),
+        # used in scripts
+        stale_deps=(ignore=[:ArgParse],),
         
         # EdgeData is an alias of a specific NamedTuple type. Now technically defining Base.isapprox
         # is type piracy, because we don't own NamedTuple, but the chance that there is another
