@@ -1,6 +1,6 @@
 name = "MissingLinks"
 uuid = "472ee5c9-fceb-493a-8c64-09683b8345c2"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Matt Bhagat-Conway <matt@indicatrix.org> and contributors"]
 
 [deps]
