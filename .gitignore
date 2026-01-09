@@ -6,3 +6,4 @@
 *.by_origin
 example_data
 Manifest.toml
+.DS_Store
