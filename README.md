@@ -16,4 +16,4 @@ There is a quickstart for getting started with the package [available in the doc
 
 ## Reproducing the Charlotte results
 
-As of 2025-01-09, code to run the Charlotte results used in the original paper have been moved to [mattwigway/missing-links-clt](https://github.com/mattwigway/missing-links-clt).
+As of 2026-01-09, code to run the Charlotte results used in the original paper have been moved to [mattwigway/missing-links-clt](https://github.com/mattwigway/missing-links-clt).
