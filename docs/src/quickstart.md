@@ -42,7 +42,7 @@ using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase, GeoFormatType
 ```
 ````
 
-Likewise, all the other code in this quickstart will also go in a cell; for brevity I omit the backticks in the remainder of this document, but each piece of code should be in a similar Julia cell. There is also a pre-written Quarto file of this entire quickstart, with all cells already filled in, [here](https://github.com/mattwigway/MissingLinks.jl/tree/main/quickstart.qmd).
+Likewise, all the other code in this quickstart will also go in a cell; for brevity I omit the backticks in the remainder of this document, but each piece of code should be in a similar Julia cell. There is also a pre-written Quarto file of this entire quickstart, with all cells already filled in, [available for download here](https://raw.githubusercontent.com/mattwigway/MissingLinks.jl/refs/heads/main/quickstart.qmd) (if it opens in your web browser, save it then open it in Visual Studio Code).
 
 ## Loading data
 
