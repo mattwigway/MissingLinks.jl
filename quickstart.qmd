@@ -1,54 +1,19 @@
 # Quickstart
 
-In this page, we will quickly work through the Julia code necessary to load a network dataset, assign weights to it, and identify and score missing links. To run the code, you'll need to install [Julia](https://julialang.org/install/).
-
-I also highly recommend installing an interactive programming environment, to make the tool easier to use. I recommend installing:
-
- - [Quarto](https://quarto.org)
- - [Visual Studio Code](https://code.visualstudio.com/).
- 
-After installing Quarto and Visual Studio Code, within Visual Studio Code go to the extensions window (gear icon -> extensions) and install the [Julia](https://marketplace.visualstudio.com/items?itemName=julialang.language-julia) and [Quarto](https://marketplace.visualstudio.com/items?itemName=quarto.quarto) extensions for Visual Studio Code. More details about all of the functions from the MissingLinks package are available in the [API Documentation](@ref). Details about the algorithm itself are in [the original paper](https://files.indicatrix.org/publications/bhagat-conway-compiano-ivie-missing-links.pdf).
-
 ## Load packages
-
-First, we need to install and load some packages. The Missing Links code is distributed as a Julia package, so we need to load MissingLinks. We also need to load the GeoDataFrames package for
-spatial data manipulation, the Plots library for visualization, the Graphs library for working with graph data structures, and the StatsBase library for statistics. All of these packages are available from the Julia general registry, and can be installed [with the Pkg-mode add command](https://docs.julialang.org/en/v1/stdlib/Pkg/).
-
-First start a Julia "REPL" (interactive session); in Visual Studio Code, press Ctrl-Shift-P (Cmd-Shift-P on Mac) and search for and select "Julia: Start REPL;" a pane will open at the bottom of the window where you can run Julia code.
-
-Make sure your cursor is in the new pane, and press `]` to enter Pkg-mode. Then type
-
-```
-add GeoDataFrames Plots Graphs StatsBase GeoFormatTypes MissingLinks DataFrames
-```
-
-and press enter to install the packages.
-
-You ran this code in the REPL. All of the other code you'll run should be in your notebook interface so you can save it. While it is optional, I do recommend [creating a Julia environment](https://pkgdocs.julialang.org/v1/environments/) to keep MissingLinks code separate from any other Julia projects you may work on.
-
-Press backspace to exit Pkg-mode.
 
 Once packages are installed, we are ready to load them.
 
-```@example main
-using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase, GeoFormatTypes, DataFrames
-```
-
-If you're using Quarto and VSCode, create a new Quarto file (File -> New File, search for Quarto), and then place this code between triple-backticks to create a Julia "cell", then hover over it and click "run cell". Your quarto document will look like this:
-
-````
 ```{julia}
 using MissingLinks, GeoDataFrames, Plots, Mmap, Graphs, StatsBase, GeoFormatTypes, DataFrames
 ```
-````
 
-Likewise, all the other code in this quickstart will also go in a cell; for brevity I omit the backticks in the remainder of this document, but each piece of code should be in a similar Julia cell. There is also a pre-written Quarto file of this entire quickstart, with all cells already filled in, [here](https://github.com/mattwigway/MissingLinks.jl/tree/main/quickstart.qmd).
 
 ## Loading data
 
 Next, we will read our data. To keep things fast for this example, we are working with a tiny segment of the Charlotte pedestrian network, in the [Northlake area](https://www.openstreetmap.org/#map=15/35.34618/-80.85734). We need data on the pedestrian network, and origins and destinations. In this case we are using residential parcels as origins, and a selection of commercial destinations in the Northlake area digitized from OpenStreetMap as destinations. The data are included with the MissingLinks package; running
 
-```@example main
+```{julia}
 MissingLinks.get_example_data()
 ```
 
@@ -58,7 +23,7 @@ All of our layers are already projected to EPSG:32119 (State Plane North Carolin
 
 Next, we can load the data. In most cases, you'll have three files: the network itself, as well as data on origins and destinations for the access metric.
 
-```@example main
+```{julia}
 sidewalks = GeoDataFrames.read("example_data/Northlake.gpkg")
 parcels = GeoDataFrames.read("example_data/Northlake_Parcels.gpkg")
 destinations = GeoDataFrames.read("example_data/Northlake_Destinations.gpkg")
@@ -70,7 +35,7 @@ rm("example_data", recursive=true)
 
 We can plot what we read in:
 
-```@example main
+```{julia}
 
 # sidewalks have an elevation component that we need to remove to plot
 sidewalks.geom = MissingLinks.remove_elevation!.(sidewalks.geom)
@@ -87,7 +52,7 @@ Next, we need to convert our network GIS layer into a mathematical "graph"—a d
 
 To build the graph, we will use the [`graph_from_gdal`](@ref) function, which will convert GeoDataFrames into a graph.
 
-```@example main
+```{julia}
 graph = graph_from_gdal(sidewalks)
 ```
 
@@ -110,19 +75,19 @@ MissingLinks always works with Euclidean coordinates, so coordinates need to be 
 
 Next, we need to assign weights to the nodes. We will create two sets of weights, for origins and destinations. For origins, the weights are just the number of units on the parcel. The weight of each parcel will get divided among the graph edges within 20 meters, and then the weight for each edge will be evenly divided between the nodes it connects. `[:,1]` retrieves the first column of the weights (if multiple weight columns are specified instead of just units, there will be one column in the output for each column specified. This avoids re-doing computationally-intensive geographic calculations if there are more weight columns—for instance, if both our origins and our destinations were coded in the parcel layer, or if we wanted to measure accessibility from multiple types of origin).
 
-```@example main
+```{julia}
 origin_weights = create_graph_weights(graph, parcels, [:units], 20)[:,1]
 ```
 
 We can look at what proportion of the units are served by sidewalks and therefore were assigned to the network. Some units will not be assigned to any edge and therefore will not count towards origin_weights.
 
-```@example main
+```{julia}
 sum(origin_weights) / sum(parcels.units)
 ```
 
 We can similarly create our destination weights. There is no weight column here—all of the destinations are equally weighted. However, we need a weight column so we just create a column of all ones. Since destinations are further from the sidewalk network due to parking lots, we use a 100 meter distance threshold. In the paper we use parcels and a 20 meter threshold, on the assumption that the edges of parcels will be close to the road, but here we have point data on destinations.
 
-```@example main
+```{julia}
 destinations.one .= 1
 destination_weights = create_graph_weights(graph, destinations, [:one], 100)[:, 1]
 sum(destination_weights) / sum(destinations.one)
@@ -132,7 +97,7 @@ sum(destination_weights) / sum(destinations.one)
 
 A point-to-point distance matrix is used extensively throughout the algorithm for identify and scoring links. We store distances in this matrix as UInt16 integer meters, to save memory (each UInt16 can represent values from 0-65535, and takes only two bytes of memory, as opposed to four or eight for traditional integers and longs). For a network as small as the one we're working with here, it would be possible to store this distance matrix in memory. However, in real-world applications, often the matrix will be larger than available memory, so storing it on disk and using memory-mapping of the disk file is recommended. Memory-mapping lets the computer treat a portion of the disk as if it were memory, and the CPU and the operating system work to make sure that the data are available quickly when needed.
 
-```@example main
+```{julia}
 matrix_file = open("quickstart_distances.bin", "w+")
 matrix = Mmap.mmap(matrix_file, Matrix{UInt16}, (nv(graph), nv(graph)))
 # this just makes sure the matrix is filled with 0s before we begin. This should not make any real difference as all values should be overwritten but is just a good practice.
@@ -145,13 +110,13 @@ fill_distance_matrix!(graph, matrix)
 
 We are now ready to identify missing links. The [`identify_potential_missing_links`](@ref) will do this and return a vector of places in the network that meet the specified criteria (in this case, no longer than 100 meters, and with a network distance of 1000 meters or more; you can change these values in the code below).
 
-```@example main
+```{julia}
 all_links = identify_potential_missing_links(graph, matrix, 100, 1000)
 ```
 
 We can plot the links identified (shown here in blue):
 
-```@example main
+```{julia}
 all_links_geo = links_to_gis(graph, all_links)
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
 plot!(all_links_geo.geometry, color="#4B9CD3")
@@ -161,13 +126,13 @@ plot!(all_links_geo.geometry, color="#4B9CD3")
 
 Clearly, most of these links are essentially duplicates. The next step is to deduplicate them, by merging links where both ends are within 100m of one another (configurable by changing the number below).
 
-```@example main
+```{julia}
 links = deduplicate_links(graph, all_links, matrix, 100)
 ```
 
 We can now plot these deduplicated links:
 
-```@example main
+```{julia}
 links_geo = links_to_gis(graph, links)
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
 # set line width wider to make the links easier to see
@@ -178,7 +143,7 @@ plot!(links_geo.geometry, color="#4B9CD3", lw=2)
 
 The final step is to score the identified links, using the [`score_links`](@ref) function. For this we need to specify what our origin and destination weights are, as well as our distance decay function. Here, I use a 1-mile (1609 meter) cutoff. This will return a vector with the score for each link. We have to specify both the distance decay function (first argument) and the point at which that function goes to zero (last argument); for a smooth decay function, I recommend instead specifying a piecewise function that goes to zero when the result is small enough that additional destinations do not materially affect accessibility.
 
-```@example main
+```{julia}
 link_scores = score_links(d -> d < 1609, graph, links, matrix, origin_weights, destination_weights, 1609)
 ```
 
@@ -186,7 +151,7 @@ link_scores = score_links(d -> d < 1609, graph, links, matrix, origin_weights, d
 
 Generally, you will want to export your results to GIS for further analysis, including the scores. You can create a GeoDataFrame including the scores like this:
 
-```@example main
+```{julia}
 links_geo = links_to_gis(graph, links, :score=>link_scores)
 ```
 
@@ -198,7 +163,7 @@ GeoDataFrames.write("links.gpkg", links_geo)
 
 We can also use it in further plotting. For example, this plot shows the top five links (the `competerank` function just ranks values largest to smallest).
 
-```@example main
+```{julia}
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
 # set line width wider to make the links easier to see
 plot!(links_geo[competerank(links_geo.score, rev=true) .<= 5, :geometry], color="#4B9CD3", lw=2)
@@ -212,7 +177,7 @@ To understand the impact of an individual link, MissingLinks provides two functi
 
 First, we'll find the highest scoring link, though these same procedures would work with any link. We also plot it so we can see what we're working with:
 
-```@example main
+```{julia}
 best_link = links[argmax(link_scores)]
 
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
@@ -228,7 +193,7 @@ The lowest level of aggregation is the one-to-one route. This allows us to visua
 
 Next, we'll create a route from one point to another (specified as latitude/longitude):
 
-```@example main
+```{julia}
 # all routing functions require an edge index
 # we can build it once and cache it; this is optional
 # but vastly improves performance with large graphs
@@ -248,13 +213,13 @@ route_without_link = route_one_to_one(
 
 `route_one_to_one` always routes only on the edges in the graph. To use a potential link, we need to create a new graph that has the link in it. We can use `realize_graph` to create a new graph with the link added (we can also specify multiple links, by separating them with commas inside the `[]`):
 
-```@example main
+```{julia}
 graph_with_link = realize_graph(graph, [best_link])
 ```
 
 And then we can use that to create the route. If you are only doing one route, you could leave off the line that creates the index, and remove the `index` parameter to `route_one_to_one`; the index will then be automatically created.
 
-```@example main
+```{julia}
 index_with_link = MissingLinks.index_graph_edges(graph_with_link)
 
 route_with_link = route_one_to_one(
@@ -268,7 +233,7 @@ route_with_link = route_one_to_one(
 
 And we can plot the result, with the original route in blue and the new one in red:
 
-```@example main
+```{julia}
 plot(sidewalks.geom, color="#000", legend=false, aspect_ratio=:equal)
 plot!(route_without_link.geom, color="#4B9CD3", lw=4)
 plot!(route_with_link.geom, color="#a24040", lw=4)
@@ -276,7 +241,7 @@ plot!(route_with_link.geom, color="#a24040", lw=4)
 
 We can also write the routes out for use in GIS (in this case, to `routes.gpkg`), by converting to a DataFrame and saving to a GIS file:
 
-```@example main
+```{julia}
 routes = DataFrame([route_without_link, route_with_link])
 metadata!(routes, "geometrycolumns", (:geom,))
 # Change the CRS code to the CRS of your graph so the routes display properly in GIS
@@ -288,7 +253,7 @@ GeoDataFrames.write("routes.gpkg", routes, crs=GeoFormatTypes.EPSG(32119))
 
 The regional access metric shows for every point around a link, how much the access from that point increases due to the link. Let's see an example:
 
-```@example main
+```{julia}
 access = regional_access(
     d -> d < 1609, # decay function, we consider locations accessible that are within 1 mile (1609 meters)
     graph,
@@ -299,7 +264,7 @@ access = regional_access(
 )
 ```
 
-```@example main
+```{julia}
 # xlim and ylim just set the map extents, adjust or remove to map different areas
 plot(access, xlim=(439200, 441500), ylim=(177500, 179500))
 # add sidewalks on top of the map
@@ -312,6 +277,6 @@ The largest increases in access happen on the west side of the link, presumably 
 
 We can also save this to GIS (GeoTIFF format):
 
-```@example main
+```{julia}
 write("access.tif", access)
 ```
