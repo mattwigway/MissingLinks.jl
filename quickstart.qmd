@@ -29,10 +29,6 @@ parcels = GeoDataFrames.read("example_data/Northlake_Parcels.gpkg")
 destinations = GeoDataFrames.read("example_data/Northlake_Destinations.gpkg")
 ```
 
-```@setup main
-rm("example_data", recursive=true)
-```
-
 We can plot what we read in:
 
 ```{julia}
@@ -57,19 +53,6 @@ graph = graph_from_gdal(sidewalks)
 ```
 
 It is possible to specify more than one layer (for example, if you have sidewalks and crosswalks in separate layers) by separating the layers with commas. It is also possible to set a tolerance for when nodes are considered coincident. However, I recommend leaving this at the default small value and using [`add_short_edges!`](@ref) to close such gaps, to avoid issues that are described in the linked documentation. Similarly, [`remove_tiny_islands`](@ref) can be used to remove small "islands" in the graph that may be data errors. There are also tools for troubleshooting the graph, namely [`find_dead_ends`](@ref) to find locations that are dead ends, and [`find_disconnected_crossings`](@ref) to find places where sidewalks cross without intersecting. While both of these things will be present in a correct graph, they may also represent data errors.
-
-## Alternate graph construction using OpenStreetMap data
-
-It is also possible to construct a graph from [OpenStreetMap](https://openstreetmap.org) data. First, obtain an OpenStreetMap data file in [PBF format](https://wiki.openstreetmap.org/wiki/PBF_Format) (e.g. from [slice.openstreetmap.us](https://slice.openstreetmap.us/)). Then you can create the graph using the following syntax:
-
-```
-graph_from_osm(pbf, TraversalPermissionSettings(), projection)
-```
-
-`pbf` is a path to the PBF file. `TraversalPermissionSettings` define what ways should be included in the graph; see [`TraversalPermissionSettings`](@ref) for details on customization options.
-
-MissingLinks always works with Euclidean coordinates, so coordinates need to be projected. `projection` is a
-`GeoFormatTools` coordinate system to project the OSM data to. e.g. for North Carolina I use `GeoFormatTools.EPSG(32119)` (you'll need to install and import GeoFormatTools).
 
 ## Assigning weights to nodes
 
