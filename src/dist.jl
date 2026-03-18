@@ -82,6 +82,9 @@ This goes back to the OG graph and computes the actual distance.
 TODO directed graph
 """
 function compute_net_distance(G, link::CandidateLink)
+    # TODO this could be faster by terminating the search after we've found the other edge
+    # and actually we could get away with a single search if we had a way to initialize the priority
+    # queue with two nodes with non-zero distances.
     start_dists = dijkstra_shortest_paths(G, code_for(G, link.fr_edge_src)).dists
     end_dists = dijkstra_shortest_paths(G, code_for(G, link.fr_edge_tgt)).dists
 
