@@ -167,7 +167,7 @@ function identify_and_score(decay_function, G, Gs; max_link_distance=100, min_ne
         end
     end
 
-    return merge_links(Gs, candidate_links, scores)
+    return merge_links(G, Gs, candidate_links, scores)
 end
 
 function create_distance_matrix(f, T, r, c, mmap)
