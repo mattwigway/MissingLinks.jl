@@ -85,6 +85,15 @@ function compute_net_distance(G, link::CandidateLink)
     start_dists = dijkstra_shortest_paths(G, code_for(G, link.fr_edge_src)).dists
     end_dists = dijkstra_shortest_paths(G, code_for(G, link.fr_edge_tgt)).dists
 
+    # compute_net_dist with a distance matrix supports having both points on the same edge,
+    # but we should never have a candidate link with both points on the same edge, so rather
+    # than supporting that case we just throw an error.
+    (
+        ((link.fr_edge_src != link.to_edge_src) || (link.fr_edge_tgt != link.to_edge_tgt)) &&
+        ((link.fr_edge_src != link.to_edge_tgt) || (link.fr_edge_tgt != link.to_edge_src))
+    ) ||
+        error("compute_net_dist with a CandidateLink does not support both ends of link on same edge")
+
     # all the ways we could combine the distances, just like compute net dist
     # but with the actual graph
     min(
