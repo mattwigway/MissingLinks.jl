@@ -256,6 +256,20 @@ function graph_to_graphml(out, G; pretty=false)
     length_m["attr.name"] = "length_m"
     length_m["attr.type"] = "double"
     link!(root, length_m)
+
+    geom = ElementNode("key")
+    geom["id"] = "geom"
+    geom["for"] = "edge"
+    geom["attr.name"] = "geom"
+    geom["attr.type"] = "string"
+    link!(root, geom)
+
+    link_type = ElementNode("key")
+    link_type["id"] = "link_type"
+    link_type["for"] = "edge"
+    link_type["attr.name"] = "link_type"
+    link_type["attr.type"] = "string"
+    link!(root, link_type)
     
     x = ElementNode("key")
     x["id"] = "x"
@@ -305,6 +319,16 @@ function graph_to_graphml(out, G; pretty=false)
         length_m["key"] = "length_m"
         link!(length_m, TextNode("$(data.length_m)"))
         link!(e, length_m)
+
+        geom = ElementNode("data")
+        geom["key"] = "geom"
+        link!(geom, TextNode(ArchGDAL.toWKT(data.geom)))
+        link!(e, geom)
+
+        link_type = ElementNode("data")
+        link_type["key"] = "link_type"
+        link!(link_type, TextNode(data.link_type))
+        link!(e, link_type)
     end
 
     if pretty
