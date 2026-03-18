@@ -1,5 +1,5 @@
 @testitem "compute_net_distance and fill_matrix" begin
-    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!, VertexID
+    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!, VertexID, CandidateLink
     import DataFrames: DataFrame
     import ArchGDAL as AG
 
@@ -38,19 +38,27 @@
     ]
 
     # from 2 meters down 1->2 to two meters down 3->4 - 2 meters each end to access node, plus d[2, 3]
+    # test using both the version used with a distance matrix in routing, and with the version used without a distance
+    # matrix in partitioning.
     @test compute_net_distance(G, dmat, VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(3), VertexID(4), UInt16(2), UInt16(4)) == UInt16(2 + 4 + 2)
+    @test compute_net_distance(G, CandidateLink(VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(3), VertexID(4), UInt16(2), UInt16(4), UInt16(0), UInt16(0))) == UInt16(2 + 4 + 2)
 
     # adjacent edges - two meters down 1->2 to three meters down 1->3 = 2 + 3
     @test compute_net_distance(G, dmat, VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(1), VertexID(3), UInt16(3), UInt16(1)) == UInt16(2 + 3)
+    @test compute_net_distance(G, CandidateLink(VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(1), VertexID(3), UInt16(3), UInt16(1), UInt16(0), UInt16(0))) == UInt16(2 + 3)
 
     # same edge
     @test compute_net_distance(G, dmat, VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(1), VertexID(2), UInt16(3), UInt16(3)) == UInt16(1)
+    # does not work with same edge, but should give an error
+    @test_throws "both ends of link on same edge" compute_net_distance(G, CandidateLink(VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(1), VertexID(2), UInt16(3), UInt16(3), UInt16(0), UInt16(0)))
 
     # and backwards
     @test compute_net_distance(G, dmat, VertexID(1), VertexID(2), UInt16(3), UInt16(3), VertexID(1), VertexID(2), UInt16(2), UInt16(4)) == UInt16(1)
+    @test_throws "both ends of link on same edge" compute_net_distance(G, CandidateLink(VertexID(1), VertexID(2), UInt16(3), UInt16(3), VertexID(1), VertexID(2), UInt16(2), UInt16(4), UInt16(0), UInt16(0)))
 
     # disconnected
     @test compute_net_distance(G, dmat, VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(5), VertexID(6), UInt16(2), UInt16(4)) == U
+    @test compute_net_distance(G, CandidateLink(VertexID(1), VertexID(2), UInt16(2), UInt16(4), VertexID(5), VertexID(6), UInt16(2), UInt16(4), UInt16(0), UInt16(0))) == Inf
 end
 
 @testitem "all possible combinations of compute_net_dist" begin
@@ -62,7 +70,7 @@ end
     #  | /
     #  |/
     #  We build it with the two angled edges in all possible orientations to make sure the correct distance is calculated
-    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!, VertexID
+    import MissingLinks: graph_from_gdal, compute_net_distance, fill_distance_matrix!, VertexID, CandidateLink
     import DataFrames: DataFrame
     import ArchGDAL as AG
 
@@ -96,6 +104,24 @@ end
                     VertexID(4),
                     reverse2 ? zero(UInt16) : one(UInt16),
                     reverse2 ? one(UInt16) : zero(UInt16),
+                ) ≈ 5
+
+                @test compute_net_distance(
+                    G,
+                    CandidateLink(
+                        VertexID(1),
+                        VertexID(2),
+                        # if one is reversed, route from the start of one (the disconnected part)
+                        # otherwise, the end
+                        reverse1 ? zero(UInt16) : one(UInt16),
+                        reverse1 ? one(UInt16) : zero(UInt16),
+                        VertexID(3),
+                        VertexID(4),
+                        reverse2 ? zero(UInt16) : one(UInt16),
+                        reverse2 ? one(UInt16) : zero(UInt16),
+                        UInt16(0),
+                        UInt16(0)
+                    )
                 ) ≈ 5
             end
         end

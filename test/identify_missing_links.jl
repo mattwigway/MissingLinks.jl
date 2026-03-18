@@ -12,11 +12,7 @@ end
     import MissingLinks: graph_from_gdal, identify_potential_missing_links, fill_distance_matrix!, CandidateLink, VertexID
     import DataFrames: DataFrame
     import ArchGDAL as AG
-    import StructEquality: @struct_hash_equal
     import Graphs: nv
-
-    # make sure we can compare two links by value rather than identity
-    @struct_hash_equal CandidateLink
 
     # Sort the links into a stable order. There can only be one link between an edge pair, so there will
     # be no ties.
