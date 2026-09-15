@@ -19,8 +19,9 @@ e.g.
         override_walkable_tags=Set(["foot"=>"designated"])
     )
 
-If even that is not enough control, you can create your type and define [MissingLinks.is_traversable](@ref) to determine if
-a link should be included using arbitrary Julia code.
+If even that is not enough control, you can create your type and define
+[MissingLinks.is_traversable](@ref `MissingLinks.is_traversable(::TraversalPermissionSettings, ::Way`)
+to determine if a link should be included using arbitrary Julia code.
 
 ## Walkable tags
 
