@@ -20,7 +20,7 @@ const DEFAULT_TRAVERSAL_SETTINGS = RuleBasedTraversalPermissionSettings([
 
     # things we assume are pedestrian
     TraversalRule([
-            ("highway" .=> ["footway", "cycleway", "pedestrian", "track", "sidewalk", "service", "road", "steps", "path", "crossing", "residential"])...,
+            ("highway" .=> ["footway", "cycleway", "pedestrian", "track", "sidewalk", "service", "steps", "path", "crossing", "residential"])...,
             ("sidewalk" .=> ["yes", "both", "left", "right"])...,
             "sidewalk:left" => "yes",
             "sidewalk:right" => "yes",
